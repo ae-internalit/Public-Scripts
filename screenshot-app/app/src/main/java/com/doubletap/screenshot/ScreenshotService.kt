@@ -1,6 +1,8 @@
 package com.doubletap.screenshot
 
 import android.accessibilityservice.AccessibilityService
+import android.content.SharedPreferences
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.VibrationEffect
@@ -8,122 +10,92 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
-import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.Toast
-import kotlin.math.abs
 
 class ScreenshotService : AccessibilityService() {
 
-    private var overlayView: FrameLayout? = null
+    private var touchWindow: View? = null
     private var windowManager: WindowManager? = null
-    private lateinit var layoutParams: WindowManager.LayoutParams
+    private var lastTouchTime = 0L
+    private var lastScreenshotTime = 0L
 
-    private var initialX = 0
-    private var initialY = 0
-    private var initialTouchX = 0f
-    private var initialTouchY = 0f
-    private var lastTapTime = 0L
-    private var isDragging = false
+    private val prefs: SharedPreferences
+        get() = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+
+    private val sensitivity: Long
+        get() = prefs.getLong(KEY_SENSITIVITY, DEFAULT_SENSITIVITY)
+
+    private val isActive: Boolean
+        get() = prefs.getBoolean(KEY_ACTIVE, true)
 
     companion object {
-        private const val DOUBLE_TAP_TIMEOUT = 300L
-        private const val TAP_THRESHOLD = 10
-        private const val TRIGGER_SIZE_DP = 48
+        const val PREFS_NAME = "screenshot_prefs"
+        const val KEY_SENSITIVITY = "sensitivity_ms"
+        const val KEY_ACTIVE = "detection_active"
+        const val DEFAULT_SENSITIVITY = 250L
+        private const val MIN_TAP_GAP = 40L
+        private const val COOLDOWN_MS = 2000L
+
+        var instance: ScreenshotService? = null
+            private set
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        createOverlay()
+        instance = this
+        createTouchDetector()
     }
 
-    private fun createOverlay() {
+    private fun createTouchDetector() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        val size = dpToPx(TRIGGER_SIZE_DP)
-
-        layoutParams = WindowManager.LayoutParams(
-            size,
-            size,
+        val params = WindowManager.LayoutParams(
+            1, 1,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = resources.displayMetrics.widthPixels - size - dpToPx(8)
-            y = resources.displayMetrics.heightPixels / 2
+            x = 0
+            y = 0
         }
 
-        overlayView = FrameLayout(this).apply {
-            setBackgroundResource(R.drawable.ic_trigger)
-            alpha = 0.5f
-            contentDescription = getString(R.string.trigger_description)
-
-            val icon = ImageView(this@ScreenshotService).apply {
-                setImageResource(R.drawable.ic_camera)
-                val pad = dpToPx(12)
-                setPadding(pad, pad, pad, pad)
-            }
-            addView(icon, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            ))
-
+        touchWindow = View(this).apply {
+            setBackgroundColor(Color.TRANSPARENT)
             setOnTouchListener { _, event ->
-                handleTouch(event)
-                true
+                if (event.action == MotionEvent.ACTION_OUTSIDE) {
+                    onScreenTouch()
+                }
+                false
             }
         }
 
-        windowManager?.addView(overlayView, layoutParams)
+        windowManager?.addView(touchWindow, params)
     }
 
-    private fun handleTouch(event: MotionEvent) {
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                initialX = layoutParams.x
-                initialY = layoutParams.y
-                initialTouchX = event.rawX
-                initialTouchY = event.rawY
-                isDragging = false
-            }
+    private fun onScreenTouch() {
+        if (!isActive) return
 
-            MotionEvent.ACTION_MOVE -> {
-                val dx = (event.rawX - initialTouchX).toInt()
-                val dy = (event.rawY - initialTouchY).toInt()
+        val now = System.currentTimeMillis()
 
-                if (abs(dx) > TAP_THRESHOLD || abs(dy) > TAP_THRESHOLD) {
-                    isDragging = true
-                    layoutParams.x = initialX + dx
-                    layoutParams.y = initialY + dy
-                    windowManager?.updateViewLayout(overlayView, layoutParams)
-                }
-            }
-
-            MotionEvent.ACTION_UP -> {
-                if (!isDragging) {
-                    val now = System.currentTimeMillis()
-                    if (now - lastTapTime < DOUBLE_TAP_TIMEOUT) {
-                        onDoubleTap()
-                        lastTapTime = 0
-                    } else {
-                        lastTapTime = now
-                    }
-                }
-            }
+        if (now - lastScreenshotTime < COOLDOWN_MS) {
+            lastTouchTime = 0
+            return
         }
-    }
 
-    private fun onDoubleTap() {
-        overlayView?.let { view ->
-            view.alpha = 0f
-            view.postDelayed({
-                takeScreenshot()
-                view.postDelayed({ view.alpha = 0.5f }, 500)
-            }, 100)
+        val gap = now - lastTouchTime
+
+        if (lastTouchTime > 0 && gap in MIN_TAP_GAP..sensitivity) {
+            lastTouchTime = 0
+            lastScreenshotTime = now
+            takeScreenshot()
+        } else {
+            lastTouchTime = now
         }
     }
 
@@ -151,8 +123,8 @@ class ScreenshotService : AccessibilityService() {
         }
     }
 
-    private fun dpToPx(dp: Int): Int {
-        return (dp * resources.displayMetrics.density).toInt()
+    fun setDetectionActive(active: Boolean) {
+        prefs.edit().putBoolean(KEY_ACTIVE, active).apply()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -160,7 +132,8 @@ class ScreenshotService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
-        overlayView?.let {
+        instance = null
+        touchWindow?.let {
             try {
                 windowManager?.removeView(it)
             } catch (_: Exception) {}

@@ -1,13 +1,10 @@
 # DoubleTap Screenshot
 
-An Android app that places a small floating button on your screen. Double-tap it to take a screenshot instantly.
+An Android app that lets you take a screenshot by double-tapping anywhere on your screen. No buttons, no overlays — just enable it and go.
 
 ## How It Works
 
-1. The app registers an **Accessibility Service** that creates a small, draggable floating button
-2. **Double-tap** the button to take a screenshot using Android's built-in screenshot mechanism
-3. The button briefly hides during capture so it doesn't appear in your screenshots
-4. A short vibration confirms the capture
+The app registers an Accessibility Service that places an invisible 1x1 pixel touch detector. It monitors screen touches and detects double-tap patterns. When a double-tap is detected, it triggers Android's built-in screenshot function.
 
 ## Requirements
 
@@ -15,18 +12,20 @@ An Android app that places a small floating button on your screen. Double-tap it
 
 ## Setup
 
-1. Open the app
+1. Install and open the app
 2. Tap **Enable Accessibility Service**
 3. Find "DoubleTap Screenshot" in the list and toggle it ON
 4. Confirm the permission dialog
-5. A blue floating button appears — double-tap it anytime to screenshot
+5. Done — double-tap anywhere on your screen to take a screenshot
 
 ## Features
 
-- **Draggable** — move the button anywhere on screen
-- **Semi-transparent** — doesn't obstruct your view
-- **Auto-hides** during capture — the button won't appear in screenshots
-- **Haptic feedback** — short vibration confirms capture
+- **Completely invisible** — nothing added to your screen
+- **Works everywhere** — any app, home screen, anywhere
+- **Haptic feedback** — short vibration confirms the capture
+- **Adjustable sensitivity** — Fast / Normal / Relaxed double-tap speed
+- **Pause/Resume** — disable detection without removing the service
+- **2-second cooldown** — prevents accidental rapid screenshots
 - **No data collection** — everything stays on your device
 
 ## Building
