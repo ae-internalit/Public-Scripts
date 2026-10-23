@@ -72,6 +72,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var currentForegroundPackage: String? = null
     private val handler = Handler(Looper.getMainLooper())
     private var screenshotObserver: ContentObserver? = null
+    private var screenshotPendingRunnable: Runnable? = null
 
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -147,6 +148,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         private const val SHAKE_THRESHOLD = 12f
         private const val SENSOR_UPDATE_INTERVAL = 100L
         private const val TAP_SEQUENCE_TIMEOUT = 500L
+        private const val RECORDING_TAP_DELAY = 250L
 
         var instance: ScreenshotService? = null
             private set
@@ -277,6 +279,13 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         tapSequenceStart = 0L
         tapSequenceX = 0f
         tapSequenceY = 0f
+        screenshotPendingRunnable?.let { handler.removeCallbacks(it) }
+        screenshotPendingRunnable = null
+    }
+
+    private fun toggleRecording() {
+        vibrate()
+        ScreenRecordActivity.start(this)
     }
 
     private fun isSwipeGesture(x: Float, y: Float, now: Long): Boolean {
@@ -355,11 +364,25 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
         tapSequenceCount++
 
-        if (tapSequenceCount >= required) {
+        val recordTapCount = required + 2
+
+        if (tapSequenceCount >= recordTapCount) {
+            screenshotPendingRunnable?.let { handler.removeCallbacks(it) }
+            screenshotPendingRunnable = null
             resetTapState()
             lastScreenshotTime = now
             recentTouchCount = 0
-            takeScreenshot()
+            toggleRecording()
+        } else if (tapSequenceCount == required) {
+            val runnable = Runnable {
+                screenshotPendingRunnable = null
+                resetTapState()
+                lastScreenshotTime = System.currentTimeMillis()
+                recentTouchCount = 0
+                takeScreenshot()
+            }
+            screenshotPendingRunnable = runnable
+            handler.postDelayed(runnable, RECORDING_TAP_DELAY)
         }
     }
 

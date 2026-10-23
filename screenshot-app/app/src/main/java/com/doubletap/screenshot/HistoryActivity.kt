@@ -62,8 +62,8 @@ class HistoryActivity : AppCompatActivity() {
             MediaStore.Images.Media.HEIGHT
         )
 
-        val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
-        val selectionArgs = arrayOf("%Screenshots%")
+        val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? OR ${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?"
+        val selectionArgs = arrayOf("%Screenshots%", "%creenshot%")
         val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
 
         contentResolver.query(
