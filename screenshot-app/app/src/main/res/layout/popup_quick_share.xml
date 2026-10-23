@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/popup_background"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <ImageButton
+        android:id="@+id/btnShare"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/popup_button_bg"
+        android:contentDescription="@string/quick_share"
+        android:padding="14dp"
+        android:src="@drawable/ic_share" />
+
+    <ImageButton
+        android:id="@+id/btnBlur"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/popup_button_bg"
+        android:contentDescription="@string/quick_blur"
+        android:padding="14dp"
+        android:src="@drawable/ic_blur" />
+
+    <ImageButton
+        android:id="@+id/btnDelete"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/popup_button_delete_bg"
+        android:contentDescription="@string/quick_delete"
+        android:padding="14dp"
+        android:src="@drawable/ic_delete" />
+
+    <ImageButton
+        android:id="@+id/btnDismiss"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/quick_dismiss"
+        android:padding="10dp"
+        android:src="@drawable/ic_close" />
+
+</LinearLayout>
