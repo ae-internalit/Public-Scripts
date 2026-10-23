@@ -257,7 +257,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private fun onScreenTouch(x: Float, y: Float) {
         if (!isActive) return
         if (triggerMode != MODE_DOUBLE_TAP) return
-        if (smartKeyboardEnabled && isKeyboardVisible) return
+        if (smartKeyboardEnabled && checkKeyboardVisible()) return
         if (currentForegroundPackage in excludedApps) return
 
         val now = System.currentTimeMillis()
