@@ -45,6 +45,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var isFirstSensorEvent = true
 
     private var isKeyboardVisible = false
+    private var currentForegroundPackage: String? = null
 
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -69,6 +70,9 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private val smartKeyboardEnabled: Boolean
         get() = prefs.getBoolean(KEY_SMART_KEYBOARD, true)
 
+    private val excludedApps: Set<String>
+        get() = prefs.getStringSet(KEY_EXCLUDED_APPS, emptySet()) ?: emptySet()
+
     companion object {
         const val PREFS_NAME = "screenshot_prefs"
         const val KEY_SENSITIVITY = "sensitivity_ms"
@@ -78,6 +82,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val DEFAULT_SENSITIVITY = 250L
         const val MODE_DOUBLE_TAP = "double_tap"
         const val MODE_SHAKE = "shake"
+        const val KEY_EXCLUDED_APPS = "excluded_apps"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
         private const val MIN_TAP_GAP = 40L
         private const val COOLDOWN_MS = 2000L
@@ -203,6 +208,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         if (!isActive) return
         if (triggerMode != MODE_DOUBLE_TAP) return
         if (smartKeyboardEnabled && isKeyboardVisible) return
+        if (currentForegroundPackage in excludedApps) return
 
         val now = System.currentTimeMillis()
 
@@ -226,6 +232,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         if (event?.sensor?.type != Sensor.TYPE_ACCELEROMETER) return
         if (!isActive) return
         if (triggerMode != MODE_SHAKE) return
+        if (currentForegroundPackage in excludedApps) return
 
         val now = System.currentTimeMillis()
         if (now - lastSensorUpdate < SENSOR_UPDATE_INTERVAL) return
@@ -303,9 +310,14 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-            event?.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
-        ) {
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            event.packageName?.toString()?.let { pkg ->
+                if (pkg != "com.android.systemui") {
+                    currentForegroundPackage = pkg
+                }
+            }
+            isKeyboardVisible = checkKeyboardVisible()
+        } else if (event?.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
             isKeyboardVisible = checkKeyboardVisible()
         }
     }
