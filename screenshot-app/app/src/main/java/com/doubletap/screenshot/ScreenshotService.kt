@@ -28,10 +28,12 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.MediaStore
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
 import java.io.IOException
@@ -68,7 +70,8 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var lastSensorUpdate = 0L
     private var isFirstSensorEvent = true
 
-    private var isKeyboardVisible = false
+    private var lastTextChangeTime = 0L
+    private var lastVolumeDownTime = 0L
     private var currentForegroundPackage: String? = null
     private val handler = Handler(Looper.getMainLooper())
     private var screenshotObserver: ContentObserver? = null
@@ -103,6 +106,9 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private val requiredTapCount: Int
         get() = prefs.getInt(KEY_TAP_COUNT, 2)
 
+    private val triggerZone: String
+        get() = prefs.getString(KEY_TRIGGER_ZONE, DEFAULT_ZONE) ?: DEFAULT_ZONE
+
     private val autoRenameEnabled: Boolean
         get() = prefs.getBoolean(KEY_AUTO_RENAME, false)
 
@@ -126,6 +132,13 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val DEFAULT_SENSITIVITY = 250L
         const val MODE_DOUBLE_TAP = "double_tap"
         const val MODE_SHAKE = "shake"
+        const val MODE_VOLUME = "volume"
+        const val KEY_TRIGGER_ZONE = "trigger_zone"
+        const val ZONE_ANYWHERE = "anywhere"
+        const val ZONE_CORNERS = "corners"
+        const val ZONE_TOP = "top"
+        const val ZONE_BOTTOM = "bottom"
+        const val DEFAULT_ZONE = ZONE_CORNERS
         const val KEY_EXCLUDED_APPS = "excluded_apps"
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_VIBRATION_PATTERN = "vibration_pattern"
@@ -147,8 +160,11 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         private const val MAX_TOUCHES_IN_BURST = 3
         private const val SHAKE_THRESHOLD = 12f
         private const val SENSOR_UPDATE_INTERVAL = 100L
-        private const val TAP_SEQUENCE_TIMEOUT = 500L
         private const val RECORDING_TAP_DELAY = 250L
+        private const val TYPING_WINDOW_MS = 2000L
+        private const val VOLUME_COMBO_WINDOW_MS = 700L
+        private const val ZONE_CORNER_DP = 120f
+        private const val ZONE_EDGE_FRACTION = 0.12f
 
         var instance: ScreenshotService? = null
             private set
@@ -274,6 +290,64 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         return false
     }
 
+    /**
+     * Many keyboards never expose a TYPE_INPUT_METHOD window to a non-IME
+     * accessibility service, so the window check alone misses most typing.
+     * Recent text edits and a focused editable field cover those cases.
+     */
+    private fun isTypingLikely(): Boolean {
+        if (System.currentTimeMillis() - lastTextChangeTime < TYPING_WINDOW_MS) return true
+        if (checkKeyboardVisible()) return true
+        return isEditableFieldFocused()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun isEditableFieldFocused(): Boolean {
+        var root: AccessibilityNodeInfo? = null
+        var focused: AccessibilityNodeInfo? = null
+        try {
+            root = rootInActiveWindow ?: return false
+            focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+            return focused.isEditable ||
+                    focused.className?.toString()?.contains("EditText") == true
+        } catch (_: Exception) {
+            return false
+        } finally {
+            try { focused?.recycle() } catch (_: Exception) {}
+            try { root?.recycle() } catch (_: Exception) {}
+        }
+    }
+
+    private fun screenSize(): Pair<Float, Float> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = (windowManager ?: getSystemService(WINDOW_SERVICE) as WindowManager)
+                .maximumWindowMetrics.bounds
+            return bounds.width().toFloat() to bounds.height().toFloat()
+        }
+        val dm = resources.displayMetrics
+        return dm.widthPixels.toFloat() to dm.heightPixels.toFloat()
+    }
+
+    private fun isInTriggerZone(x: Float, y: Float): Boolean {
+        val zone = triggerZone
+        if (zone == ZONE_ANYWHERE) return true
+
+        val (width, height) = screenSize()
+        if (width <= 0f || height <= 0f) return true
+
+        return when (zone) {
+            ZONE_TOP -> y <= height * ZONE_EDGE_FRACTION
+            ZONE_BOTTOM -> y >= height * (1f - ZONE_EDGE_FRACTION)
+            ZONE_CORNERS -> {
+                val box = ZONE_CORNER_DP * resources.displayMetrics.density
+                val nearX = x <= box || x >= width - box
+                val nearY = y <= box || y >= height - box
+                nearX && nearY
+            }
+            else -> true
+        }
+    }
+
     private fun resetTapState() {
         tapSequenceCount = 0
         tapSequenceStart = 0L
@@ -312,11 +386,16 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private fun onScreenTouch(x: Float, y: Float) {
         if (!isActive) return
         if (triggerMode != MODE_DOUBLE_TAP) return
-        if (smartKeyboardEnabled && checkKeyboardVisible()) return
+        if (!isInTriggerZone(x, y)) {
+            resetTapState()
+            return
+        }
+        if (smartKeyboardEnabled && isTypingLikely()) return
         if (currentForegroundPackage in excludedApps) return
 
         val now = System.currentTimeMillis()
         val required = requiredTapCount
+        val tapTimeout = sensitivity * 2
 
         if (now - lastScreenshotTime < COOLDOWN_MS) {
             resetTapState()
@@ -340,7 +419,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             return
         }
 
-        if (tapSequenceCount == 0 || now - tapSequenceStart > TAP_SEQUENCE_TIMEOUT) {
+        if (tapSequenceCount == 0 || now - tapSequenceStart > tapTimeout) {
             tapSequenceCount = 1
             tapSequenceStart = now
             tapSequenceX = x
@@ -616,6 +695,10 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         prefs.edit().putString(KEY_TRIGGER_MODE, mode).apply()
     }
 
+    fun setTriggerZone(zone: String) {
+        prefs.edit().putString(KEY_TRIGGER_ZONE, zone).apply()
+    }
+
     fun setSmartKeyboard(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_SMART_KEYBOARD, enabled).apply()
     }
@@ -648,16 +731,46 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         prefs.edit().putString(KEY_WATERMARK_TEXT, text).apply()
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            event.packageName?.toString()?.let { pkg ->
-                if (pkg != "com.android.systemui") {
-                    currentForegroundPackage = pkg
+    /**
+     * Volume Down followed by Volume Up leaves the volume where it started,
+     * so the trigger costs the user nothing and cannot collide with a tap.
+     */
+    override fun onKeyEvent(event: KeyEvent?): Boolean {
+        if (event == null || event.action != KeyEvent.ACTION_DOWN) return false
+        if (!isActive || triggerMode != MODE_VOLUME) return false
+        if (currentForegroundPackage in excludedApps) return false
+
+        val now = System.currentTimeMillis()
+        when (event.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> lastVolumeDownTime = now
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (lastVolumeDownTime != 0L &&
+                    now - lastVolumeDownTime <= VOLUME_COMBO_WINDOW_MS &&
+                    now - lastScreenshotTime > COOLDOWN_MS
+                ) {
+                    lastVolumeDownTime = 0L
+                    lastScreenshotTime = now
+                    takeScreenshot()
                 }
             }
-            isKeyboardVisible = checkKeyboardVisible()
-        } else if (event?.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
-            isKeyboardVisible = checkKeyboardVisible()
+            else -> lastVolumeDownTime = 0L
+        }
+        return false
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        when (event?.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                event.packageName?.toString()?.let { pkg ->
+                    if (pkg != "com.android.systemui") {
+                        currentForegroundPackage = pkg
+                    }
+                }
+            }
+            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
+            AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> {
+                lastTextChangeTime = System.currentTimeMillis()
+            }
         }
     }
 
