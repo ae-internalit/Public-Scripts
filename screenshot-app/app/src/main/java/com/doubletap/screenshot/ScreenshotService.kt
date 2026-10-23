@@ -17,6 +17,8 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -48,6 +50,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
     private var isKeyboardVisible = false
     private var currentForegroundPackage: String? = null
+    private val handler = Handler(Looper.getMainLooper())
 
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -85,6 +88,9 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val MODE_DOUBLE_TAP = "double_tap"
         const val MODE_SHAKE = "shake"
         const val KEY_EXCLUDED_APPS = "excluded_apps"
+        const val KEY_DELAY_SECONDS = "delay_seconds"
+        const val KEY_VIBRATION_PATTERN = "vibration_pattern"
+        const val KEY_SCREENSHOT_COUNT = "screenshot_count"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
         private const val MIN_TAP_GAP = 40L
         private const val COOLDOWN_MS = 2000L
@@ -288,26 +294,51 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun takeScreenshot() {
+        val delay = prefs.getInt(KEY_DELAY_SECONDS, 0)
+        if (delay > 0) {
+            startCountdown(delay)
+        } else {
+            performScreenshotNow()
+        }
+    }
+
+    private fun startCountdown(seconds: Int) {
+        for (i in seconds downTo 1) {
+            handler.postDelayed({
+                Toast.makeText(this, getString(R.string.delay_countdown, i), Toast.LENGTH_SHORT).show()
+            }, ((seconds - i) * 1000).toLong())
+        }
+        handler.postDelayed({ performScreenshotNow() }, (seconds * 1000).toLong())
+    }
+
+    private fun performScreenshotNow() {
         val success = performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
         if (success) {
             vibrate()
+            val count = prefs.getInt(KEY_SCREENSHOT_COUNT, 0) + 1
+            prefs.edit().putInt(KEY_SCREENSHOT_COUNT, count).apply()
         } else {
             Toast.makeText(this, R.string.screenshot_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun vibrate() {
+        val pattern = prefs.getString(KEY_VIBRATION_PATTERN, "short") ?: "short"
+        if (pattern == "none") return
+
+        val effect = when (pattern) {
+            "long" -> VibrationEffect.createOneShot(150, VibrationEffect.DEFAULT_AMPLITUDE)
+            "double" -> VibrationEffect.createWaveform(longArrayOf(0, 50, 80, 50), -1)
+            else -> VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val manager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
-            manager.defaultVibrator.vibrate(
-                VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
-            )
+            manager.defaultVibrator.vibrate(effect)
         } else {
             @Suppress("DEPRECATION")
             val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
-            vibrator.vibrate(
-                VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
-            )
+            vibrator.vibrate(effect)
         }
     }
 
@@ -321,6 +352,14 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
     fun setSmartKeyboard(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_SMART_KEYBOARD, enabled).apply()
+    }
+
+    fun setDelaySeconds(seconds: Int) {
+        prefs.edit().putInt(KEY_DELAY_SECONDS, seconds).apply()
+    }
+
+    fun setVibrationPattern(pattern: String) {
+        prefs.edit().putString(KEY_VIBRATION_PATTERN, pattern).apply()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

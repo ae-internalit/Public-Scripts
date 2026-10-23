@@ -41,6 +41,21 @@
     <string name="excluded_apps_count">%d app(s) excluded</string>
     <string name="excluded_apps_none">No apps excluded</string>
 
+    <string name="delay_label">Screenshot Delay</string>
+    <string name="delay_none">None — instant capture</string>
+    <string name="delay_3s">3 seconds — countdown before capture</string>
+    <string name="delay_5s">5 seconds — more time to prepare</string>
+    <string name="delay_countdown">Screenshot in %d…</string>
+
+    <string name="vibration_label">Vibration Feedback</string>
+    <string name="vibration_none">None — silent capture</string>
+    <string name="vibration_short">Short — quick buzz (default)</string>
+    <string name="vibration_long">Long — stronger feedback</string>
+    <string name="vibration_double">Double — two quick buzzes</string>
+
+    <string name="screenshot_count_format">%d screenshots taken</string>
+    <string name="screenshot_count_zero">No screenshots taken yet</string>
+
     <string name="screenshot_failed">Screenshot failed</string>
 
     <string name="accessibility_service_description">Detects double-tap gestures or shake anywhere on screen and takes a screenshot. Nothing visible is added to your screen. The service does not collect or transmit any data.</string>
