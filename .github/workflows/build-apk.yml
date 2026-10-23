@@ -1,0 +1,59 @@
+name: Build APK
+
+on:
+  push:
+    paths:
+      - 'screenshot-app/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build debug APK
+        working-directory: screenshot-app
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp screenshot-app/app/build/outputs/apk/debug/app-debug.apk DoubleTapScreenshot.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DoubleTapScreenshot
+          path: DoubleTapScreenshot.apk
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: DoubleTap Screenshot v1.0
+          body: |
+            ## DoubleTap Screenshot
+
+            Download the APK file below and install it on your Android phone.
+
+            ### How to install:
+            1. Download `DoubleTapScreenshot.apk` below
+            2. Open it on your phone
+            3. Tap "Install" (allow "Install from unknown sources" if asked)
+            4. Open the app and follow the setup
+
+            Requires Android 9 or newer.
+          files: DoubleTapScreenshot.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
