@@ -33,13 +33,13 @@
 
     <string name="instruction_setup">To get started:\n\n1. Tap the button above\n2. Find \"DoubleTap Screenshot\" in the list\n3. Toggle it ON and confirm\n\nOnce enabled, double-tap anywhere on your screen to take a screenshot. Nothing visible is added to your screen.</string>
 
-    <string name="instruction_active">Double-tap anywhere on your screen to take a screenshot.\n\nA short vibration confirms the capture. There is a 2-second cooldown between screenshots to prevent accidental triggers.\n\nSmart Keyboard Detection is on — screenshots won\'t trigger while you\'re typing.</string>
+    <string name="instruction_active">Double-tap anywhere on your screen to take a screenshot.\nQuad-tap (4 taps) to start/stop screen recording.\n\nA short vibration confirms the capture. There is a 2-second cooldown between screenshots.\n\nSmart Keyboard Detection is on — screenshots won\'t trigger while you\'re typing.</string>
 
     <string name="instruction_active_shake">Shake your phone to take a screenshot.\n\nA short vibration confirms the capture. There is a 2-second cooldown between screenshots.</string>
 
     <string name="instruction_paused">Detection is paused. Tap Resume to start capturing screenshots again.</string>
 
-    <string name="instruction_active_triple">Triple-tap anywhere on your screen to take a screenshot.\n\nA short vibration confirms the capture. Three taps required reduces false triggers.</string>
+    <string name="instruction_active_triple">Triple-tap anywhere on your screen to take a screenshot.\n5 taps to start/stop screen recording.\n\nA short vibration confirms the capture. Three taps required reduces false triggers.</string>
 
     <string name="excluded_apps_button">Excluded Apps</string>
     <string name="excluded_apps_title">Excluded Apps</string>
