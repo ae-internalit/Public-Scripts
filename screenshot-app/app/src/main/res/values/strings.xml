@@ -37,6 +37,8 @@
 
     <string name="instruction_active_shake">Shake your phone to take a screenshot.\n\nA short vibration confirms the capture. There is a 2-second cooldown between screenshots.</string>
 
+    <string name="instruction_paused">Detection is paused. Tap Resume to start capturing screenshots again.</string>
+
     <string name="instruction_active_triple">Triple-tap anywhere on your screen to take a screenshot.\n\nA short vibration confirms the capture. Three taps required reduces false triggers.</string>
 
     <string name="excluded_apps_button">Excluded Apps</string>
@@ -70,6 +72,19 @@
     <string name="auto_rename_title">Auto-Name Screenshots</string>
     <string name="auto_rename_desc">Name screenshots with date, app name, and location</string>
     <string name="location_permission_needed">Location permission needed for auto-naming with location</string>
+
+    <string name="quick_share">Share</string>
+    <string name="quick_blur">Blur &amp; Redact</string>
+    <string name="quick_delete">Delete</string>
+    <string name="quick_dismiss">Dismiss</string>
+    <string name="quick_share_title">Quick Share</string>
+    <string name="quick_share_desc">Show share popup after taking a screenshot</string>
+
+    <string name="blur_editor_title">Blur / Redact</string>
+    <string name="blur_editor_hint">Draw rectangles over areas to blur</string>
+    <string name="blur_cancel">Cancel</string>
+    <string name="blur_save">Save</string>
+    <string name="blur_share">Share</string>
 
     <string name="accessibility_service_description">Detects double-tap gestures or shake anywhere on screen and takes a screenshot. Nothing visible is added to your screen. The service does not collect or transmit any data.</string>
 </resources>

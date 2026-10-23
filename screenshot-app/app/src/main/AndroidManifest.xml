@@ -32,6 +32,11 @@
             android:exported="false"
             android:theme="@style/Theme.DoubleTapScreenshot" />
 
+        <activity
+            android:name=".BlurEditorActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DoubleTapScreenshot" />
+
         <service
             android:name=".ScreenshotService"
             android:exported="false"

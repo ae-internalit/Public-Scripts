@@ -100,6 +100,11 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private val autoRenameEnabled: Boolean
         get() = prefs.getBoolean(KEY_AUTO_RENAME, false)
 
+    private val quickShareEnabled: Boolean
+        get() = prefs.getBoolean(KEY_QUICK_SHARE, true)
+
+    private var quickSharePopup: QuickSharePopup? = null
+
     companion object {
         const val PREFS_NAME = "screenshot_prefs"
         const val KEY_SENSITIVITY = "sensitivity_ms"
@@ -115,6 +120,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val KEY_SCREENSHOT_COUNT = "screenshot_count"
         const val KEY_TAP_COUNT = "tap_count"
         const val KEY_AUTO_RENAME = "auto_rename"
+        const val KEY_QUICK_SHARE = "quick_share"
         const val KEY_THEME = "theme_mode"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
         private const val MIN_TAP_GAP = 40L
@@ -375,6 +381,14 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             registerScreenshotObserver()
         }
 
+        val showQuickShare = quickShareEnabled
+        if (showQuickShare) {
+            quickSharePopup?.dismiss()
+            val popup = QuickSharePopup(this)
+            quickSharePopup = popup
+            popup.listenForScreenshot()
+        }
+
         val success = performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
         if (success) {
             vibrate()
@@ -384,6 +398,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             if (shouldRename) {
                 unregisterScreenshotObserver()
             }
+            quickSharePopup?.dismiss()
             Toast.makeText(this, R.string.screenshot_failed, Toast.LENGTH_SHORT).show()
         }
     }
@@ -514,6 +529,10 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         prefs.edit().putBoolean(KEY_AUTO_RENAME, enabled).apply()
     }
 
+    fun setQuickShare(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_QUICK_SHARE, enabled).apply()
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             event.packageName?.toString()?.let { pkg ->
@@ -533,6 +552,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         instance = null
         sensorManager?.unregisterListener(this)
         unregisterScreenshotObserver()
+        quickSharePopup?.dismiss()
         try {
             unregisterReceiver(screenshotReceiver)
         } catch (_: Exception) {}

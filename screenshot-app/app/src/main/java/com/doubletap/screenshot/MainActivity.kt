@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tapCountGroup: RadioGroup
     private lateinit var tapCountLabel: TextView
     private lateinit var autoRenameSwitch: SwitchCompat
+    private lateinit var quickShareSwitch: SwitchCompat
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST = 1001
@@ -69,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         tapCountGroup = findViewById(R.id.tapCountGroup)
         tapCountLabel = findViewById(R.id.tapCountLabel)
         autoRenameSwitch = findViewById(R.id.autoRenameSwitch)
+        quickShareSwitch = findViewById(R.id.quickShareSwitch)
 
         actionButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -122,6 +124,14 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(ScreenshotService.KEY_SMART_KEYBOARD, isChecked)
                 .apply()
             ScreenshotService.instance?.setSmartKeyboard(isChecked)
+        }
+
+        quickShareSwitch.setOnCheckedChangeListener { _, isChecked ->
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(ScreenshotService.KEY_QUICK_SHARE, isChecked)
+                .apply()
+            ScreenshotService.instance?.setQuickShare(isChecked)
         }
 
         autoRenameSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -266,6 +276,9 @@ class MainActivity : AppCompatActivity() {
 
         val smartKeyboard = prefs.getBoolean(ScreenshotService.KEY_SMART_KEYBOARD, true)
         smartKeyboardSwitch.isChecked = smartKeyboard
+
+        val quickShare = prefs.getBoolean(ScreenshotService.KEY_QUICK_SHARE, true)
+        quickShareSwitch.isChecked = quickShare
 
         val autoRename = prefs.getBoolean(ScreenshotService.KEY_AUTO_RENAME, false)
         autoRenameSwitch.isChecked = autoRename
