@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Double-tap screenshot icon: two tap circles + screen outline -->
+    <!-- Background fill -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M0,0h108v108H0z" />
+    <!-- Screen/phone outline -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,28h40c2.2,0 4,1.8 4,4v44c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4V32c0,-2.2 1.8,-4 4,-4zM34,32v44h40V32H34z" />
+    <!-- First tap circle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.7"
+        android:pathData="M48,48m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+    <!-- Second tap circle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,56m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+</vector>
