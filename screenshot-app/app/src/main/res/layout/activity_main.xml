@@ -370,6 +370,68 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+        <!-- Watermark Card -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/watermarkCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_background"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/autoRenameCard">
+
+            <TextView
+                android:id="@+id/watermarkTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:text="@string/watermark_switch_title"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                app:layout_constraintEnd_toStartOf="@id/watermarkSwitch"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/watermarkDesc"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="12dp"
+                android:text="@string/watermark_switch_desc"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                app:layout_constraintEnd_toStartOf="@id/watermarkSwitch"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/watermarkTitle" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/watermarkSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="false"
+                app:thumbTint="@color/primary"
+                app:trackTint="@color/text_secondary"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <EditText
+                android:id="@+id/watermarkTextInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_background"
+                android:hint="@string/watermark_hint"
+                android:inputType="text"
+                android:padding="12dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:textSize="14sp"
+                android:visibility="gone"
+                app:layout_constraintTop_toBottomOf="@id/watermarkDesc" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
         <Button
             android:id="@+id/excludedAppsButton"
             android:layout_width="match_parent"
@@ -384,7 +446,40 @@
             android:textAllCaps="false"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
-            app:layout_constraintTop_toBottomOf="@id/autoRenameCard" />
+            app:layout_constraintTop_toBottomOf="@id/watermarkCard" />
+
+        <!-- History & Recording -->
+        <Button
+            android:id="@+id/historyButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_background"
+            android:gravity="start|center_vertical"
+            android:minHeight="52dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="@string/history_button"
+            android:textAllCaps="false"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            app:layout_constraintTop_toBottomOf="@id/excludedAppsButton" />
+
+        <Button
+            android:id="@+id/recordButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_background"
+            android:gravity="start|center_vertical"
+            android:minHeight="52dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="@string/record_start"
+            android:textAllCaps="false"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            app:layout_constraintTop_toBottomOf="@id/historyButton" />
 
         <!-- Sensitivity Card -->
         <TextView
@@ -396,7 +491,7 @@
             android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:layout_constraintTop_toBottomOf="@id/excludedAppsButton" />
+            app:layout_constraintTop_toBottomOf="@id/recordButton" />
 
         <RadioGroup
             android:id="@+id/sensitivityGroup"

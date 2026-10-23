@@ -34,6 +34,7 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -53,6 +54,10 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var tapSequenceStart = 0L
     private var tapSequenceX = 0f
     private var tapSequenceY = 0f
+
+    private var firstTouchX = 0f
+    private var firstTouchY = 0f
+    private var firstTouchTime = 0L
 
     private var sensorManager: SensorManager? = null
     private var accelerometer: Sensor? = null
@@ -103,6 +108,12 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private val quickShareEnabled: Boolean
         get() = prefs.getBoolean(KEY_QUICK_SHARE, true)
 
+    private val watermarkEnabled: Boolean
+        get() = prefs.getBoolean(KEY_WATERMARK, false)
+
+    private val watermarkText: String
+        get() = prefs.getString(KEY_WATERMARK_TEXT, "") ?: ""
+
     private var quickSharePopup: QuickSharePopup? = null
 
     companion object {
@@ -122,8 +133,11 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val KEY_AUTO_RENAME = "auto_rename"
         const val KEY_QUICK_SHARE = "quick_share"
         const val KEY_THEME = "theme_mode"
+        const val KEY_WATERMARK = "watermark_enabled"
+        const val KEY_WATERMARK_TEXT = "watermark_text"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
         private const val MIN_TAP_GAP = 40L
+        private const val SWIPE_VELOCITY_THRESHOLD = 0.8f
         private const val COOLDOWN_MS = 2000L
         private const val NOTIFICATION_CHANNEL_ID = "screenshot_service"
         private const val NOTIFICATION_ID = 1
@@ -176,6 +190,12 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val recordIntent = PendingIntent.getActivity(
+            this, 2,
+            Intent(this, ScreenRecordActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         return Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("Screenshot Ready")
             .setContentText("Tap to take a screenshot")
@@ -185,6 +205,11 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             .addAction(
                 Notification.Action.Builder(
                     null, "Screenshot", pendingIntent
+                ).build()
+            )
+            .addAction(
+                Notification.Action.Builder(
+                    null, "Record", recordIntent
                 ).build()
             )
             .build()
@@ -254,6 +279,27 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         tapSequenceY = 0f
     }
 
+    private fun isSwipeGesture(x: Float, y: Float, now: Long): Boolean {
+        if (firstTouchTime == 0L) {
+            firstTouchX = x
+            firstTouchY = y
+            firstTouchTime = now
+            return false
+        }
+
+        val dx = x - firstTouchX
+        val dy = y - firstTouchY
+        val distance = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+        val elapsed = (now - firstTouchTime).coerceAtLeast(1L)
+        val velocity = distance / elapsed
+
+        firstTouchX = x
+        firstTouchY = y
+        firstTouchTime = now
+
+        return velocity > SWIPE_VELOCITY_THRESHOLD
+    }
+
     private fun onScreenTouch(x: Float, y: Float) {
         if (!isActive) return
         if (triggerMode != MODE_DOUBLE_TAP) return
@@ -264,6 +310,11 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         val required = requiredTapCount
 
         if (now - lastScreenshotTime < COOLDOWN_MS) {
+            resetTapState()
+            return
+        }
+
+        if (isSwipeGesture(x, y, now)) {
             resetTapState()
             return
         }
@@ -377,8 +428,9 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
     private fun performScreenshotNow() {
         val shouldRename = autoRenameEnabled
-        if (shouldRename) {
-            registerScreenshotObserver()
+        val shouldWatermark = watermarkEnabled && watermarkText.isNotEmpty()
+        if (shouldRename || shouldWatermark) {
+            registerScreenshotObserver(shouldRename, shouldWatermark)
         }
 
         val showQuickShare = quickShareEnabled
@@ -395,7 +447,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             val count = prefs.getInt(KEY_SCREENSHOT_COUNT, 0) + 1
             prefs.edit().putInt(KEY_SCREENSHOT_COUNT, count).apply()
         } else {
-            if (shouldRename) {
+            if (shouldRename || shouldWatermark) {
                 unregisterScreenshotObserver()
             }
             quickSharePopup?.dismiss()
@@ -403,13 +455,16 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         }
     }
 
-    private fun registerScreenshotObserver() {
+    private fun registerScreenshotObserver(rename: Boolean = true, watermark: Boolean = false) {
         unregisterScreenshotObserver()
 
         val observer = object : ContentObserver(handler) {
             override fun onChange(selfChange: Boolean, uri: Uri?) {
                 super.onChange(selfChange, uri)
-                uri?.let { renameScreenshot(it) }
+                uri?.let {
+                    if (rename) renameScreenshot(it)
+                    if (watermark) applyWatermark(it)
+                }
                 unregisterScreenshotObserver()
             }
         }
@@ -455,6 +510,35 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
                 put(MediaStore.Images.Media.DISPLAY_NAME, newName)
             }
             contentResolver.update(uri, values, null, null)
+        } catch (_: Exception) {}
+    }
+
+    private fun applyWatermark(uri: Uri) {
+        try {
+            val bitmap = contentResolver.openInputStream(uri)?.use { stream ->
+                android.graphics.BitmapFactory.decodeStream(stream)
+            } ?: return
+
+            val result = bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+            val canvas = android.graphics.Canvas(result)
+            val paint = android.graphics.Paint().apply {
+                color = android.graphics.Color.argb(128, 255, 255, 255)
+                textSize = result.width / 20f
+                isAntiAlias = true
+                setShadowLayer(4f, 2f, 2f, android.graphics.Color.argb(128, 0, 0, 0))
+            }
+
+            val text = watermarkText
+            val textWidth = paint.measureText(text)
+            val x = result.width - textWidth - 20f
+            val y = result.height - 30f
+            canvas.drawText(text, x, y, paint)
+
+            contentResolver.openOutputStream(uri, "w")?.use { out ->
+                result.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+            }
+            bitmap.recycle()
+            result.recycle()
         } catch (_: Exception) {}
     }
 
@@ -531,6 +615,14 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
     fun setQuickShare(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_QUICK_SHARE, enabled).apply()
+    }
+
+    fun setWatermark(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_WATERMARK, enabled).apply()
+    }
+
+    fun setWatermarkText(text: String) {
+        prefs.edit().putString(KEY_WATERMARK_TEXT, text).apply()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

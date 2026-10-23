@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="@string/blur_editor_title"
+        android:text="@string/editor_title"
         android:textColor="@color/text_primary"
         android:textSize="20sp"
         android:textStyle="bold"
@@ -19,11 +19,11 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/blurHint"
+        android:id="@+id/toolIndicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="@string/blur_editor_hint"
+        android:text="@string/tool_blur"
         android:textColor="@color/text_secondary"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -34,11 +34,11 @@
         android:id="@+id/imageContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_margin="16dp"
-        app:layout_constraintBottom_toTopOf="@id/buttonBar"
+        android:layout_margin="8dp"
+        app:layout_constraintBottom_toTopOf="@id/toolBar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/blurHint">
+        app:layout_constraintTop_toBottomOf="@id/toolIndicator">
 
         <ImageView
             android:id="@+id/editorImage"
@@ -54,13 +54,113 @@
 
     </FrameLayout>
 
+    <HorizontalScrollView
+        android:id="@+id/toolBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        app:layout_constraintBottom_toTopOf="@id/buttonBar">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp">
+
+            <ImageButton
+                android:id="@+id/btnToolBlur"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/popup_button_bg"
+                android:contentDescription="@string/tool_blur"
+                android:padding="10dp"
+                android:src="@drawable/ic_blur" />
+
+            <ImageButton
+                android:id="@+id/btnToolDraw"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/popup_button_bg"
+                android:contentDescription="@string/tool_draw"
+                android:padding="10dp"
+                android:src="@drawable/ic_draw" />
+
+            <ImageButton
+                android:id="@+id/btnToolArrow"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/popup_button_bg"
+                android:contentDescription="@string/tool_arrow"
+                android:padding="10dp"
+                android:src="@drawable/ic_arrow" />
+
+            <ImageButton
+                android:id="@+id/btnToolText"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/popup_button_bg"
+                android:contentDescription="@string/tool_text"
+                android:padding="10dp"
+                android:src="@drawable/ic_text" />
+
+            <ImageButton
+                android:id="@+id/btnToolCrop"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/popup_button_bg"
+                android:contentDescription="@string/tool_crop"
+                android:padding="10dp"
+                android:src="@drawable/ic_crop" />
+
+            <ImageButton
+                android:id="@+id/btnToolWatermark"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/popup_button_bg"
+                android:contentDescription="@string/tool_watermark"
+                android:padding="10dp"
+                android:src="@drawable/ic_watermark" />
+
+            <ImageButton
+                android:id="@+id/btnToolOcr"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/popup_button_bg"
+                android:contentDescription="@string/tool_ocr"
+                android:padding="10dp"
+                android:src="@drawable/ic_ocr" />
+
+            <ImageButton
+                android:id="@+id/btnToolUndo"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/popup_button_bg"
+                android:contentDescription="@string/tool_undo"
+                android:padding="10dp"
+                android:src="@drawable/ic_undo" />
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
+
     <LinearLayout
         android:id="@+id/buttonBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="horizontal"
-        android:padding="16dp"
+        android:padding="12dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <Button

@@ -75,6 +75,7 @@
 
     <string name="quick_share">Share</string>
     <string name="quick_blur">Blur &amp; Redact</string>
+    <string name="quick_ocr">Copy Text</string>
     <string name="quick_delete">Delete</string>
     <string name="quick_dismiss">Dismiss</string>
     <string name="quick_share_title">Quick Share</string>
@@ -87,4 +88,51 @@
     <string name="blur_share">Share</string>
 
     <string name="accessibility_service_description">Detects double-tap gestures or shake anywhere on screen and takes a screenshot. Nothing visible is added to your screen. The service does not collect or transmit any data.</string>
+
+    <!-- Editor tools -->
+    <string name="editor_title">Screenshot Editor</string>
+    <string name="tool_blur">Blur / Redact</string>
+    <string name="tool_draw">Freehand Draw</string>
+    <string name="tool_arrow">Arrow</string>
+    <string name="tool_text">Add Text</string>
+    <string name="tool_crop">Crop</string>
+    <string name="tool_watermark">Watermark</string>
+    <string name="tool_ocr">Extract Text (OCR)</string>
+    <string name="tool_undo">Undo</string>
+    <string name="editor_text_hint">Enter text to add</string>
+    <string name="editor_add_text">Add Text</string>
+    <string name="editor_no_changes">Make some edits first</string>
+    <string name="editor_saved">Saved to gallery</string>
+
+    <!-- Watermark -->
+    <string name="watermark_title">Add Watermark</string>
+    <string name="watermark_hint">Enter watermark text</string>
+    <string name="watermark_label">Screenshot Watermark</string>
+    <string name="watermark_switch_title">Auto-Watermark</string>
+    <string name="watermark_switch_desc">Automatically add watermark text to screenshots</string>
+    <string name="watermark_text_label">Watermark Text</string>
+
+    <!-- OCR -->
+    <string name="ocr_result_title">Extracted Text</string>
+    <string name="ocr_copy">Copy</string>
+    <string name="ocr_copied">Text copied to clipboard</string>
+    <string name="ocr_no_text">No text found in image</string>
+    <string name="ocr_failed">Text extraction failed</string>
+
+    <!-- History -->
+    <string name="history_title">Screenshot Gallery</string>
+    <string name="history_empty">No screenshots found</string>
+    <string name="history_button">Screenshot Gallery</string>
+
+    <!-- Stitch -->
+    <string name="stitch_title">Stitch Screenshots</string>
+    <string name="stitch_hint">Select screenshots to combine vertically</string>
+    <string name="stitch_btn">Stitch</string>
+    <string name="stitch_action">Stitch Selected</string>
+
+    <!-- Screen Record -->
+    <string name="record_button">Screen Recording</string>
+    <string name="record_start">Start Recording</string>
+    <string name="record_stop">Stop Recording</string>
+    <string name="record_desc">Record your screen — tap to start, notification to stop</string>
 </resources>

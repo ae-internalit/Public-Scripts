@@ -1,9 +1,12 @@
 package com.doubletap.screenshot
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.database.ContentObserver
+import android.graphics.BitmapFactory
 import android.graphics.PixelFormat
 import android.net.Uri
 import android.os.Handler
@@ -14,6 +17,7 @@ import android.view.LayoutInflater
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.Toast
 
 class QuickSharePopup(private val context: Context) {
 
@@ -95,6 +99,11 @@ class QuickSharePopup(private val context: Context) {
             dismiss()
         }
 
+        view.findViewById<ImageButton>(R.id.btnOcr).setOnClickListener {
+            latestScreenshotUri?.let { uri -> extractText(uri) }
+            dismiss()
+        }
+
         view.findViewById<ImageButton>(R.id.btnDelete).setOnClickListener {
             latestScreenshotUri?.let { uri -> deleteScreenshot(uri) }
             dismiss()
@@ -127,6 +136,37 @@ class QuickSharePopup(private val context: Context) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
+    }
+
+    private fun extractText(uri: Uri) {
+        try {
+            val bitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)
+            } ?: return
+
+            val inputImage = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
+            val recognizer = com.google.mlkit.vision.text.TextRecognition.getClient(
+                com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS
+            )
+
+            recognizer.process(inputImage)
+                .addOnSuccessListener { text ->
+                    bitmap.recycle()
+                    if (text.text.isNotEmpty()) {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("OCR", text.text))
+                        Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "No text found", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .addOnFailureListener {
+                    bitmap.recycle()
+                    Toast.makeText(context, "OCR failed", Toast.LENGTH_SHORT).show()
+                }
+        } catch (_: Exception) {
+            Toast.makeText(context, "OCR failed", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun deleteScreenshot(uri: Uri) {

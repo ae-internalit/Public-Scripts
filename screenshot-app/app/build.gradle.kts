@@ -11,8 +11,8 @@ android {
         applicationId = "com.doubletap.screenshot"
         minSdk = 28
         targetSdk = 34
-        versionCode = 7
-        versionName = "5.1"
+        versionCode = 8
+        versionName = "6.0"
     }
 
     buildTypes {
@@ -40,4 +40,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+
+    implementation("com.google.mlkit:text-recognition:16.0.0")
 }
