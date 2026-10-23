@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
@@ -37,6 +38,21 @@
             android:exported="false"
             android:theme="@style/Theme.DoubleTapScreenshot" />
 
+        <activity
+            android:name=".HistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DoubleTapScreenshot" />
+
+        <activity
+            android:name=".StitchActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DoubleTapScreenshot" />
+
+        <activity
+            android:name=".ScreenRecordActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <service
             android:name=".ScreenshotService"
             android:exported="false"
@@ -52,6 +68,11 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="screenshot_trigger_detection" />
         </service>
+
+        <service
+            android:name=".ScreenRecordService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <service
             android:name=".ScreenshotTileService"

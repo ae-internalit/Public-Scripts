@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.view.View
 import android.view.accessibility.AccessibilityManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.RadioButton
 import android.widget.RadioGroup
@@ -42,6 +43,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tapCountLabel: TextView
     private lateinit var autoRenameSwitch: SwitchCompat
     private lateinit var quickShareSwitch: SwitchCompat
+    private lateinit var watermarkSwitch: SwitchCompat
+    private lateinit var watermarkTextInput: EditText
+    private lateinit var historyButton: Button
+    private lateinit var recordButton: Button
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST = 1001
@@ -71,6 +76,10 @@ class MainActivity : AppCompatActivity() {
         tapCountLabel = findViewById(R.id.tapCountLabel)
         autoRenameSwitch = findViewById(R.id.autoRenameSwitch)
         quickShareSwitch = findViewById(R.id.quickShareSwitch)
+        watermarkSwitch = findViewById(R.id.watermarkSwitch)
+        watermarkTextInput = findViewById(R.id.watermarkTextInput)
+        historyButton = findViewById(R.id.historyButton)
+        recordButton = findViewById(R.id.recordButton)
 
         actionButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -82,6 +91,19 @@ class MainActivity : AppCompatActivity() {
             val currentlyActive = prefs.getBoolean(ScreenshotService.KEY_ACTIVE, true)
             service.setDetectionActive(!currentlyActive)
             updateStatus()
+        }
+
+        historyButton.setOnClickListener {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
+
+        recordButton.setOnClickListener {
+            if (ScreenRecordService.isRunning) {
+                ScreenRecordService.stop(this)
+                recordButton.text = getString(R.string.record_start)
+            } else {
+                ScreenRecordActivity.start(this)
+            }
         }
 
         themeGroup.setOnCheckedChangeListener { _, checkedId ->
@@ -143,6 +165,26 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(ScreenshotService.KEY_AUTO_RENAME, isChecked)
                 .apply()
             ScreenshotService.instance?.setAutoRename(isChecked)
+        }
+
+        watermarkSwitch.setOnCheckedChangeListener { _, isChecked ->
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(ScreenshotService.KEY_WATERMARK, isChecked)
+                .apply()
+            ScreenshotService.instance?.setWatermark(isChecked)
+            watermarkTextInput.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        watermarkTextInput.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val text = watermarkTextInput.text.toString()
+                getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                    .edit()
+                    .putString(ScreenshotService.KEY_WATERMARK_TEXT, text)
+                    .apply()
+                ScreenshotService.instance?.setWatermarkText(text)
+            }
         }
 
         excludedAppsButton.setOnClickListener {
@@ -243,6 +285,11 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         updateStatus()
         loadSettings()
+        recordButton.text = if (ScreenRecordService.isRunning) {
+            getString(R.string.record_stop)
+        } else {
+            getString(R.string.record_start)
+        }
     }
 
     private fun loadSettings() {
@@ -282,6 +329,11 @@ class MainActivity : AppCompatActivity() {
 
         val autoRename = prefs.getBoolean(ScreenshotService.KEY_AUTO_RENAME, false)
         autoRenameSwitch.isChecked = autoRename
+
+        val watermark = prefs.getBoolean(ScreenshotService.KEY_WATERMARK, false)
+        watermarkSwitch.isChecked = watermark
+        watermarkTextInput.visibility = if (watermark) View.VISIBLE else View.GONE
+        watermarkTextInput.setText(prefs.getString(ScreenshotService.KEY_WATERMARK_TEXT, ""))
 
         val excludedCount = (prefs.getStringSet(ScreenshotService.KEY_EXCLUDED_APPS, emptySet()) ?: emptySet()).size
         excludedAppsButton.text = if (excludedCount == 0) {
