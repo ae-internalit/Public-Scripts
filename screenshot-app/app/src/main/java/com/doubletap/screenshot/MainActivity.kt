@@ -28,6 +28,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var triggerGroup: RadioGroup
     private lateinit var smartKeyboardSwitch: SwitchCompat
     private lateinit var excludedAppsButton: Button
+    private lateinit var delayGroup: RadioGroup
+    private lateinit var vibrationGroup: RadioGroup
+    private lateinit var screenshotCount: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +47,9 @@ class MainActivity : AppCompatActivity() {
         triggerGroup = findViewById(R.id.triggerGroup)
         smartKeyboardSwitch = findViewById(R.id.smartKeyboardSwitch)
         excludedAppsButton = findViewById(R.id.excludedAppsButton)
+        delayGroup = findViewById(R.id.delayGroup)
+        vibrationGroup = findViewById(R.id.vibrationGroup)
+        screenshotCount = findViewById(R.id.screenshotCount)
 
         actionButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -96,6 +102,33 @@ class MainActivity : AppCompatActivity() {
                 .putLong(ScreenshotService.KEY_SENSITIVITY, ms)
                 .apply()
         }
+
+        delayGroup.setOnCheckedChangeListener { _, checkedId ->
+            val seconds = when (checkedId) {
+                R.id.delay3s -> 3
+                R.id.delay5s -> 5
+                else -> 0
+            }
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putInt(ScreenshotService.KEY_DELAY_SECONDS, seconds)
+                .apply()
+            ScreenshotService.instance?.setDelaySeconds(seconds)
+        }
+
+        vibrationGroup.setOnCheckedChangeListener { _, checkedId ->
+            val pattern = when (checkedId) {
+                R.id.vibrationNone -> "none"
+                R.id.vibrationLong -> "long"
+                R.id.vibrationDouble -> "double"
+                else -> "short"
+            }
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putString(ScreenshotService.KEY_VIBRATION_PATTERN, pattern)
+                .apply()
+            ScreenshotService.instance?.setVibrationPattern(pattern)
+        }
     }
 
     override fun onResume() {
@@ -133,6 +166,23 @@ class MainActivity : AppCompatActivity() {
         } else {
             getString(R.string.excluded_apps_count, excludedCount)
         }
+
+        val delaySeconds = prefs.getInt(ScreenshotService.KEY_DELAY_SECONDS, 0)
+        val delayId = when (delaySeconds) {
+            3 -> R.id.delay3s
+            5 -> R.id.delay5s
+            else -> R.id.delayNone
+        }
+        findViewById<RadioButton>(delayId).isChecked = true
+
+        val vibPattern = prefs.getString(ScreenshotService.KEY_VIBRATION_PATTERN, "short") ?: "short"
+        val vibId = when (vibPattern) {
+            "none" -> R.id.vibrationNone
+            "long" -> R.id.vibrationLong
+            "double" -> R.id.vibrationDouble
+            else -> R.id.vibrationShort
+        }
+        findViewById<RadioButton>(vibId).isChecked = true
     }
 
     private fun updateSensitivityVisibility(mode: String) {
@@ -163,6 +213,13 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
         val detectionActive = prefs.getBoolean(ScreenshotService.KEY_ACTIVE, true)
         val mode = prefs.getString(ScreenshotService.KEY_TRIGGER_MODE, "double_tap") ?: "double_tap"
+
+        val count = prefs.getInt(ScreenshotService.KEY_SCREENSHOT_COUNT, 0)
+        screenshotCount.text = if (count == 0) {
+            getString(R.string.screenshot_count_zero)
+        } else {
+            getString(R.string.screenshot_count_format, count)
+        }
 
         if (serviceEnabled && detectionActive) {
             statusIcon.setImageResource(R.drawable.ic_check_circle)
