@@ -35,6 +35,12 @@
 
     <string name="instruction_paused">Detection is paused. Tap Resume to start capturing screenshots again.</string>
 
+    <string name="excluded_apps_button">Excluded Apps</string>
+    <string name="excluded_apps_title">Excluded Apps</string>
+    <string name="excluded_apps_search_hint">Search apps…</string>
+    <string name="excluded_apps_count">%d app(s) excluded</string>
+    <string name="excluded_apps_none">No apps excluded</string>
+
     <string name="screenshot_failed">Screenshot failed</string>
 
     <string name="accessibility_service_description">Detects double-tap gestures or shake anywhere on screen and takes a screenshot. Nothing visible is added to your screen. The service does not collect or transmit any data.</string>

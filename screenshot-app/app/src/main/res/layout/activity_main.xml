@@ -208,6 +208,22 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+        <Button
+            android:id="@+id/excludedAppsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_background"
+            android:gravity="start|center_vertical"
+            android:minHeight="52dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="@string/excluded_apps_button"
+            android:textAllCaps="false"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            app:layout_constraintTop_toBottomOf="@id/smartKeyboardCard" />
+
         <!-- Sensitivity Card -->
         <TextView
             android:id="@+id/sensitivityLabel"
@@ -218,7 +234,7 @@
             android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:layout_constraintTop_toBottomOf="@id/smartKeyboardCard" />
+            app:layout_constraintTop_toBottomOf="@id/excludedAppsButton" />
 
         <RadioGroup
             android:id="@+id/sensitivityGroup"

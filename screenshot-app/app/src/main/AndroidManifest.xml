@@ -24,6 +24,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ExcludedAppsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DoubleTapScreenshot" />
+
         <service
             android:name=".ScreenshotService"
             android:exported="false"

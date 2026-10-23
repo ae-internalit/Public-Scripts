@@ -27,6 +27,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sensitivityLabel: TextView
     private lateinit var triggerGroup: RadioGroup
     private lateinit var smartKeyboardSwitch: SwitchCompat
+    private lateinit var excludedAppsButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         sensitivityLabel = findViewById(R.id.sensitivityLabel)
         triggerGroup = findViewById(R.id.triggerGroup)
         smartKeyboardSwitch = findViewById(R.id.smartKeyboardSwitch)
+        excludedAppsButton = findViewById(R.id.excludedAppsButton)
 
         actionButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -76,6 +78,10 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(ScreenshotService.KEY_SMART_KEYBOARD, isChecked)
                 .apply()
             ScreenshotService.instance?.setSmartKeyboard(isChecked)
+        }
+
+        excludedAppsButton.setOnClickListener {
+            startActivity(Intent(this, ExcludedAppsActivity::class.java))
         }
 
         sensitivityGroup.setOnCheckedChangeListener { _, checkedId ->
@@ -120,6 +126,13 @@ class MainActivity : AppCompatActivity() {
 
         val smartKeyboard = prefs.getBoolean(ScreenshotService.KEY_SMART_KEYBOARD, true)
         smartKeyboardSwitch.isChecked = smartKeyboard
+
+        val excludedCount = (prefs.getStringSet(ScreenshotService.KEY_EXCLUDED_APPS, emptySet()) ?: emptySet()).size
+        excludedAppsButton.text = if (excludedCount == 0) {
+            getString(R.string.excluded_apps_button)
+        } else {
+            getString(R.string.excluded_apps_count, excludedCount)
+        }
     }
 
     private fun updateSensitivityVisibility(mode: String) {
