@@ -6,22 +6,27 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.database.ContentObserver
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.location.Geocoder
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.provider.MediaStore
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -29,6 +34,9 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ScreenshotService : AccessibilityService(), SensorEventListener {
 
@@ -40,6 +48,11 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var lastScreenshotTime = 0L
     private var recentTouchCount = 0
     private var burstWindowStart = 0L
+
+    private var tapSequenceCount = 0
+    private var tapSequenceStart = 0L
+    private var tapSequenceX = 0f
+    private var tapSequenceY = 0f
 
     private var sensorManager: SensorManager? = null
     private var accelerometer: Sensor? = null
@@ -53,6 +66,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var isKeyboardVisible = false
     private var currentForegroundPackage: String? = null
     private val handler = Handler(Looper.getMainLooper())
+    private var screenshotObserver: ContentObserver? = null
 
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -80,6 +94,12 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private val excludedApps: Set<String>
         get() = prefs.getStringSet(KEY_EXCLUDED_APPS, emptySet()) ?: emptySet()
 
+    private val requiredTapCount: Int
+        get() = prefs.getInt(KEY_TAP_COUNT, 2)
+
+    private val autoRenameEnabled: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_RENAME, false)
+
     companion object {
         const val PREFS_NAME = "screenshot_prefs"
         const val KEY_SENSITIVITY = "sensitivity_ms"
@@ -93,6 +113,9 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_VIBRATION_PATTERN = "vibration_pattern"
         const val KEY_SCREENSHOT_COUNT = "screenshot_count"
+        const val KEY_TAP_COUNT = "tap_count"
+        const val KEY_AUTO_RENAME = "auto_rename"
+        const val KEY_THEME = "theme_mode"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
         private const val MIN_TAP_GAP = 40L
         private const val COOLDOWN_MS = 2000L
@@ -100,9 +123,10 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         private const val NOTIFICATION_ID = 1
         private const val MAX_TAP_DISTANCE = 100f
         private const val BURST_WINDOW_MS = 600L
-        private const val MAX_TOUCHES_IN_BURST = 2
+        private const val MAX_TOUCHES_IN_BURST = 3
         private const val SHAKE_THRESHOLD = 12f
         private const val SENSOR_UPDATE_INTERVAL = 100L
+        private const val TAP_SEQUENCE_TIMEOUT = 500L
 
         var instance: ScreenshotService? = null
             private set
@@ -217,6 +241,13 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         return false
     }
 
+    private fun resetTapState() {
+        tapSequenceCount = 0
+        tapSequenceStart = 0L
+        tapSequenceX = 0f
+        tapSequenceY = 0f
+    }
+
     private fun onScreenTouch(x: Float, y: Float) {
         if (!isActive) return
         if (triggerMode != MODE_DOUBLE_TAP) return
@@ -224,10 +255,10 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         if (currentForegroundPackage in excludedApps) return
 
         val now = System.currentTimeMillis()
+        val required = requiredTapCount
 
         if (now - lastScreenshotTime < COOLDOWN_MS) {
-            lastTouchTime = 0
-            recentTouchCount = 0
+            resetTapState()
             return
         }
 
@@ -239,30 +270,39 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         }
 
         if (recentTouchCount > MAX_TOUCHES_IN_BURST) {
-            lastTouchTime = 0
+            resetTapState()
             return
         }
 
-        val gap = now - lastTouchTime
+        if (tapSequenceCount == 0 || now - tapSequenceStart > TAP_SEQUENCE_TIMEOUT) {
+            tapSequenceCount = 1
+            tapSequenceStart = now
+            tapSequenceX = x
+            tapSequenceY = y
+            return
+        }
 
-        if (lastTouchTime > 0 && gap in MIN_TAP_GAP..sensitivity) {
-            val dx = x - lastTouchX
-            val dy = y - lastTouchY
-            val distance = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
-            if (distance <= MAX_TAP_DISTANCE) {
-                lastTouchTime = 0
-                lastScreenshotTime = now
-                recentTouchCount = 0
-                takeScreenshot()
-            } else {
-                lastTouchTime = now
-                lastTouchX = x
-                lastTouchY = y
-            }
-        } else {
-            lastTouchTime = now
-            lastTouchX = x
-            lastTouchY = y
+        val gap = now - tapSequenceStart
+        if (gap < MIN_TAP_GAP) return
+
+        val dx = x - tapSequenceX
+        val dy = y - tapSequenceY
+        val distance = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+        if (distance > MAX_TAP_DISTANCE) {
+            tapSequenceCount = 1
+            tapSequenceStart = now
+            tapSequenceX = x
+            tapSequenceY = y
+            return
+        }
+
+        tapSequenceCount++
+
+        if (tapSequenceCount >= required) {
+            resetTapState()
+            lastScreenshotTime = now
+            recentTouchCount = 0
+            takeScreenshot()
         }
     }
 
@@ -330,14 +370,100 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     }
 
     private fun performScreenshotNow() {
+        val shouldRename = autoRenameEnabled
+        if (shouldRename) {
+            registerScreenshotObserver()
+        }
+
         val success = performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
         if (success) {
             vibrate()
             val count = prefs.getInt(KEY_SCREENSHOT_COUNT, 0) + 1
             prefs.edit().putInt(KEY_SCREENSHOT_COUNT, count).apply()
         } else {
+            if (shouldRename) {
+                unregisterScreenshotObserver()
+            }
             Toast.makeText(this, R.string.screenshot_failed, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun registerScreenshotObserver() {
+        unregisterScreenshotObserver()
+
+        val observer = object : ContentObserver(handler) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                super.onChange(selfChange, uri)
+                uri?.let { renameScreenshot(it) }
+                unregisterScreenshotObserver()
+            }
+        }
+        screenshotObserver = observer
+
+        contentResolver.registerContentObserver(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            true,
+            observer
+        )
+
+        handler.postDelayed({ unregisterScreenshotObserver() }, 5000)
+    }
+
+    private fun unregisterScreenshotObserver() {
+        screenshotObserver?.let {
+            contentResolver.unregisterContentObserver(it)
+        }
+        screenshotObserver = null
+    }
+
+    private fun renameScreenshot(uri: Uri) {
+        try {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
+            val dateStr = dateFormat.format(Date())
+            val appName = currentForegroundPackage?.let { pkg ->
+                try {
+                    val appInfo = packageManager.getApplicationInfo(pkg, 0)
+                    packageManager.getApplicationLabel(appInfo).toString()
+                        .replace("[^a-zA-Z0-9]".toRegex(), "_")
+                } catch (_: Exception) { null }
+            } ?: "Unknown"
+
+            val locationStr = getLocationString()
+            val newName = buildString {
+                append("Screenshot_${dateStr}_${appName}")
+                if (locationStr.isNotEmpty()) {
+                    append("_$locationStr")
+                }
+            }
+
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, newName)
+            }
+            contentResolver.update(uri, values, null, null)
+        } catch (_: Exception) {}
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getLocationString(): String {
+        try {
+            val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+            val location = locationManager.getLastKnownLocation(
+                android.location.LocationManager.NETWORK_PROVIDER
+            ) ?: locationManager.getLastKnownLocation(
+                android.location.LocationManager.GPS_PROVIDER
+            ) ?: return ""
+
+            val geocoder = Geocoder(this, Locale.getDefault())
+            val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+            if (!addresses.isNullOrEmpty()) {
+                val address = addresses[0]
+                val parts = mutableListOf<String>()
+                address.locality?.let { parts.add(it) }
+                address.countryCode?.let { parts.add(it) }
+                return parts.joinToString("_").replace("[^a-zA-Z0-9_]".toRegex(), "")
+            }
+        } catch (_: Exception) {}
+        return ""
     }
 
     private fun vibrate() {
@@ -380,6 +506,14 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         prefs.edit().putString(KEY_VIBRATION_PATTERN, pattern).apply()
     }
 
+    fun setTapCount(count: Int) {
+        prefs.edit().putInt(KEY_TAP_COUNT, count).apply()
+    }
+
+    fun setAutoRename(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_RENAME, enabled).apply()
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             event.packageName?.toString()?.let { pkg ->
@@ -398,6 +532,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     override fun onDestroy() {
         instance = null
         sensorManager?.unregisterListener(this)
+        unregisterScreenshotObserver()
         try {
             unregisterReceiver(screenshotReceiver)
         } catch (_: Exception) {}
