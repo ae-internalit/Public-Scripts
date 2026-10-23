@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.view.accessibility.AccessibilityManager
 import android.widget.Button
 import android.widget.ImageView
@@ -12,15 +13,20 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var statusIcon: ImageView
     private lateinit var statusText: TextView
+    private lateinit var subtitleText: TextView
     private lateinit var actionButton: Button
     private lateinit var pauseButton: Button
     private lateinit var instructionText: TextView
     private lateinit var sensitivityGroup: RadioGroup
+    private lateinit var sensitivityLabel: TextView
+    private lateinit var triggerGroup: RadioGroup
+    private lateinit var smartKeyboardSwitch: SwitchCompat
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,10 +34,14 @@ class MainActivity : AppCompatActivity() {
 
         statusIcon = findViewById(R.id.statusIcon)
         statusText = findViewById(R.id.statusText)
+        subtitleText = findViewById(R.id.subtitleText)
         actionButton = findViewById(R.id.actionButton)
         pauseButton = findViewById(R.id.pauseButton)
         instructionText = findViewById(R.id.instructionText)
         sensitivityGroup = findViewById(R.id.sensitivityGroup)
+        sensitivityLabel = findViewById(R.id.sensitivityLabel)
+        triggerGroup = findViewById(R.id.triggerGroup)
+        smartKeyboardSwitch = findViewById(R.id.smartKeyboardSwitch)
 
         actionButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -43,6 +53,29 @@ class MainActivity : AppCompatActivity() {
             val currentlyActive = prefs.getBoolean(ScreenshotService.KEY_ACTIVE, true)
             service.setDetectionActive(!currentlyActive)
             updateStatus()
+        }
+
+        triggerGroup.setOnCheckedChangeListener { _, checkedId ->
+            val mode = when (checkedId) {
+                R.id.triggerShake -> "shake"
+                else -> "double_tap"
+            }
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putString(ScreenshotService.KEY_TRIGGER_MODE, mode)
+                .apply()
+            ScreenshotService.instance?.setTriggerMode(mode)
+            updateSensitivityVisibility(mode)
+            updateSubtitle(mode)
+            updateInstructions()
+        }
+
+        smartKeyboardSwitch.setOnCheckedChangeListener { _, isChecked ->
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(ScreenshotService.KEY_SMART_KEYBOARD, isChecked)
+                .apply()
+            ScreenshotService.instance?.setSmartKeyboard(isChecked)
         }
 
         sensitivityGroup.setOnCheckedChangeListener { _, checkedId ->
@@ -62,24 +95,61 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateStatus()
-        loadSensitivity()
+        loadSettings()
     }
 
-    private fun loadSensitivity() {
-        val ms = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
-            .getLong(ScreenshotService.KEY_SENSITIVITY, ScreenshotService.DEFAULT_SENSITIVITY)
-        val id = when {
+    private fun loadSettings() {
+        val prefs = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+
+        val ms = prefs.getLong(ScreenshotService.KEY_SENSITIVITY, ScreenshotService.DEFAULT_SENSITIVITY)
+        val sensitivityId = when {
             ms <= 180L -> R.id.sensitivityFast
             ms <= 250L -> R.id.sensitivityNormal
             else -> R.id.sensitivitySlow
         }
-        findViewById<RadioButton>(id).isChecked = true
+        findViewById<RadioButton>(sensitivityId).isChecked = true
+
+        val mode = prefs.getString(ScreenshotService.KEY_TRIGGER_MODE, "double_tap") ?: "double_tap"
+        val triggerId = when (mode) {
+            "shake" -> R.id.triggerShake
+            else -> R.id.triggerDoubleTap
+        }
+        findViewById<RadioButton>(triggerId).isChecked = true
+        updateSensitivityVisibility(mode)
+        updateSubtitle(mode)
+
+        val smartKeyboard = prefs.getBoolean(ScreenshotService.KEY_SMART_KEYBOARD, true)
+        smartKeyboardSwitch.isChecked = smartKeyboard
+    }
+
+    private fun updateSensitivityVisibility(mode: String) {
+        val visibility = if (mode == "double_tap") View.VISIBLE else View.GONE
+        sensitivityLabel.visibility = visibility
+        sensitivityGroup.visibility = visibility
+    }
+
+    private fun updateSubtitle(mode: String) {
+        subtitleText.text = getString(
+            if (mode == "shake") R.string.app_subtitle_shake else R.string.app_subtitle
+        )
+    }
+
+    private fun updateInstructions() {
+        if (!isServiceEnabled()) return
+        val prefs = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+        val active = prefs.getBoolean(ScreenshotService.KEY_ACTIVE, true)
+        if (!active) return
+        val mode = prefs.getString(ScreenshotService.KEY_TRIGGER_MODE, "double_tap") ?: "double_tap"
+        instructionText.text = getString(
+            if (mode == "shake") R.string.instruction_active_shake else R.string.instruction_active
+        )
     }
 
     private fun updateStatus() {
         val serviceEnabled = isServiceEnabled()
         val prefs = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
         val detectionActive = prefs.getBoolean(ScreenshotService.KEY_ACTIVE, true)
+        val mode = prefs.getString(ScreenshotService.KEY_TRIGGER_MODE, "double_tap") ?: "double_tap"
 
         if (serviceEnabled && detectionActive) {
             statusIcon.setImageResource(R.drawable.ic_check_circle)
@@ -87,7 +157,9 @@ class MainActivity : AppCompatActivity() {
             statusText.text = getString(R.string.status_active)
             statusText.setTextColor(getColor(R.color.green))
             actionButton.text = getString(R.string.button_settings)
-            instructionText.text = getString(R.string.instruction_active)
+            instructionText.text = getString(
+                if (mode == "shake") R.string.instruction_active_shake else R.string.instruction_active
+            )
             pauseButton.text = getString(R.string.button_pause)
             pauseButton.isEnabled = true
         } else if (serviceEnabled && !detectionActive) {

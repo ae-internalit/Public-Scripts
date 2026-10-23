@@ -98,6 +98,116 @@
             app:strokeColor="@color/text_secondary"
             app:strokeWidth="1dp" />
 
+        <!-- Trigger Method -->
+        <TextView
+            android:id="@+id/triggerLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="@string/trigger_label"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/pauseButton" />
+
+        <RadioGroup
+            android:id="@+id/triggerGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_background"
+            android:orientation="vertical"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/triggerLabel">
+
+            <RadioButton
+                android:id="@+id/triggerDoubleTap"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="@string/trigger_double_tap"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:buttonTint="@color/primary" />
+
+            <RadioButton
+                android:id="@+id/triggerShake"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="@string/trigger_shake"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:buttonTint="@color/primary" />
+
+        </RadioGroup>
+
+        <!-- Smart Features -->
+        <TextView
+            android:id="@+id/smartFeaturesLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="@string/smart_features_label"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/triggerGroup" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/smartKeyboardCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_background"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/smartFeaturesLabel">
+
+            <TextView
+                android:id="@+id/smartKeyboardTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:text="@string/smart_keyboard_title"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                app:layout_constraintEnd_toStartOf="@id/smartKeyboardSwitch"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/smartKeyboardDesc"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="12dp"
+                android:text="@string/smart_keyboard_desc"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                app:layout_constraintEnd_toStartOf="@id/smartKeyboardSwitch"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/smartKeyboardTitle" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/smartKeyboardSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                app:thumbTint="@color/primary"
+                app:trackTint="@color/text_secondary"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
         <!-- Sensitivity Card -->
         <TextView
             android:id="@+id/sensitivityLabel"
@@ -108,7 +218,7 @@
             android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:layout_constraintTop_toBottomOf="@id/pauseButton" />
+            app:layout_constraintTop_toBottomOf="@id/smartKeyboardCard" />
 
         <RadioGroup
             android:id="@+id/sensitivityGroup"
