@@ -38,6 +38,8 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     private var lastScreenshotTime = 0L
+    private var recentTouchCount = 0
+    private var burstWindowStart = 0L
 
     private var sensorManager: SensorManager? = null
     private var accelerometer: Sensor? = null
@@ -97,6 +99,8 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         private const val NOTIFICATION_CHANNEL_ID = "screenshot_service"
         private const val NOTIFICATION_ID = 1
         private const val MAX_TAP_DISTANCE = 100f
+        private const val BURST_WINDOW_MS = 600L
+        private const val MAX_TOUCHES_IN_BURST = 2
         private const val SHAKE_THRESHOLD = 12f
         private const val SENSOR_UPDATE_INTERVAL = 100L
 
@@ -223,6 +227,19 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
         if (now - lastScreenshotTime < COOLDOWN_MS) {
             lastTouchTime = 0
+            recentTouchCount = 0
+            return
+        }
+
+        if (now - burstWindowStart > BURST_WINDOW_MS) {
+            recentTouchCount = 1
+            burstWindowStart = now
+        } else {
+            recentTouchCount++
+        }
+
+        if (recentTouchCount > MAX_TOUCHES_IN_BURST) {
+            lastTouchTime = 0
             return
         }
 
@@ -235,6 +252,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             if (distance <= MAX_TAP_DISTANCE) {
                 lastTouchTime = 0
                 lastScreenshotTime = now
+                recentTouchCount = 0
                 takeScreenshot()
             } else {
                 lastTouchTime = now
