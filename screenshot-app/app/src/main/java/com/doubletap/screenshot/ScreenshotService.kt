@@ -33,6 +33,8 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var touchWindow: View? = null
     private var windowManager: WindowManager? = null
     private var lastTouchTime = 0L
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
     private var lastScreenshotTime = 0L
 
     private var sensorManager: SensorManager? = null
@@ -88,6 +90,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         private const val COOLDOWN_MS = 2000L
         private const val NOTIFICATION_CHANNEL_ID = "screenshot_service"
         private const val NOTIFICATION_ID = 1
+        private const val MAX_TAP_DISTANCE = 100f
         private const val SHAKE_THRESHOLD = 12f
         private const val SENSOR_UPDATE_INTERVAL = 100L
 
@@ -176,7 +179,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             setBackgroundColor(Color.TRANSPARENT)
             setOnTouchListener { _, event ->
                 if (event.action == MotionEvent.ACTION_OUTSIDE) {
-                    onScreenTouch()
+                    onScreenTouch(event.rawX, event.rawY)
                 }
                 false
             }
@@ -204,7 +207,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         return false
     }
 
-    private fun onScreenTouch() {
+    private fun onScreenTouch(x: Float, y: Float) {
         if (!isActive) return
         if (triggerMode != MODE_DOUBLE_TAP) return
         if (smartKeyboardEnabled && isKeyboardVisible) return
@@ -220,11 +223,22 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         val gap = now - lastTouchTime
 
         if (lastTouchTime > 0 && gap in MIN_TAP_GAP..sensitivity) {
-            lastTouchTime = 0
-            lastScreenshotTime = now
-            takeScreenshot()
+            val dx = x - lastTouchX
+            val dy = y - lastTouchY
+            val distance = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+            if (distance <= MAX_TAP_DISTANCE) {
+                lastTouchTime = 0
+                lastScreenshotTime = now
+                takeScreenshot()
+            } else {
+                lastTouchTime = now
+                lastTouchX = x
+                lastTouchY = y
+            }
         } else {
             lastTouchTime = now
+            lastTouchX = x
+            lastTouchY = y
         }
     }
 
