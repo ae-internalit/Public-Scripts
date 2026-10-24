@@ -204,6 +204,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
                             lastScreenshotTime = now
                             takeScreenshot()
                         } catch (e: Exception) {
+                            recordError("accessibility button", e)
                             Toast.makeText(
                                 this@ScreenshotService,
                                 "Screenshot failed: $e",
@@ -405,6 +406,23 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         screenshotPendingRunnable = null
     }
 
+    /**
+     * Failures on the capture path are caught so they cannot kill the process,
+     * which would otherwise make them invisible. Record them where the app can
+     * show them.
+     */
+    fun recordError(where: String, error: Throwable) {
+        try {
+            val text = buildString {
+                append("Non-fatal in ").append(where).append('\n')
+                append(error.toString()).append('\n')
+                error.stackTrace.take(10).forEach { append("  at ").append(it).append('\n') }
+            }
+            prefs.edit().putString(KEY_LAST_CRASH, text).apply()
+        } catch (_: Exception) {
+        }
+    }
+
     private fun toggleRecording() {
         vibrate()
         ScreenRecordActivity.start(this)
@@ -590,8 +608,9 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
                 val popup = QuickSharePopup(this)
                 quickSharePopup = popup
                 popup.listenForScreenshot()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 quickSharePopup = null
+                recordError("quick share setup", e)
             }
         }
 

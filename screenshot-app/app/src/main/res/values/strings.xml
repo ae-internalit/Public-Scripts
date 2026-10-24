@@ -29,9 +29,9 @@
     <string name="a11y_button_hint">Turn this on in Settings → Accessibility → DoubleTap Screenshot → Shortcut, then tap the floating button to capture.</string>
     <string name="history_needs_permission">Permission to read photos is required to list your screenshots. Grant it in Settings → Apps → DoubleTap Screenshot → Permissions.</string>
 
-    <string name="crash_title">The app crashed last time</string>
-    <string name="crash_copy">Copy Details</string>
-    <string name="crash_dismiss">Dismiss</string>
+    <string name="crash_title">An error was recorded — copy this and send it</string>
+    <string name="crash_copy">Copy Error Details</string>
+    <string name="crash_dismiss">Clear</string>
     <string name="crash_copied">Crash details copied — paste them to report the problem</string>
 
     <string name="zone_label">Trigger Zone</string>

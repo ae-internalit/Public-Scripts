@@ -124,6 +124,7 @@ class QuickSharePopup(private val context: Context) {
             windowManager?.addView(view, params)
         } catch (e: Exception) {
             popupView = null
+            ScreenshotService.instance?.recordError("quick share popup", e)
             Toast.makeText(context, "Quick Share popup failed: $e", Toast.LENGTH_LONG).show()
             return
         }
