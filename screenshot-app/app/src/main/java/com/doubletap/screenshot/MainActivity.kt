@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tapCountLabel: TextView
     private lateinit var autoRenameSwitch: SwitchCompat
     private lateinit var quickShareSwitch: SwitchCompat
-    private lateinit var recordAudioSwitch: SwitchCompat
+    private lateinit var audioGroup: RadioGroup
     private lateinit var watermarkSwitch: SwitchCompat
     private lateinit var watermarkTextInput: EditText
     private lateinit var historyButton: Button
@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
         tapCountLabel = findViewById(R.id.tapCountLabel)
         autoRenameSwitch = findViewById(R.id.autoRenameSwitch)
         quickShareSwitch = findViewById(R.id.quickShareSwitch)
-        recordAudioSwitch = findViewById(R.id.recordAudioSwitch)
+        audioGroup = findViewById(R.id.audioGroup)
         watermarkSwitch = findViewById(R.id.watermarkSwitch)
         watermarkTextInput = findViewById(R.id.watermarkTextInput)
         historyButton = findViewById(R.id.historyButton)
@@ -199,8 +199,16 @@ class MainActivity : AppCompatActivity() {
             ScreenshotService.instance?.setSmartKeyboard(isChecked)
         }
 
-        recordAudioSwitch.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked && ContextCompat.checkSelfPermission(
+        audioGroup.setOnCheckedChangeListener { _, checkedId ->
+            val mode = when (checkedId) {
+                R.id.audioMic -> ScreenRecorder.AUDIO_MIC
+                R.id.audioBoth -> ScreenRecorder.AUDIO_BOTH
+                R.id.audioNone -> ScreenRecorder.AUDIO_NONE
+                else -> ScreenRecorder.AUDIO_DEVICE
+            }
+
+            // Device capture uses AudioRecord too, so it needs RECORD_AUDIO as well.
+            if (mode != ScreenRecorder.AUDIO_NONE && ContextCompat.checkSelfPermission(
                     this, Manifest.permission.RECORD_AUDIO
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
@@ -208,9 +216,16 @@ class MainActivity : AppCompatActivity() {
                     this, arrayOf(Manifest.permission.RECORD_AUDIO), AUDIO_PERMISSION_REQUEST
                 )
             }
+
+            val needsDevice =
+                mode == ScreenRecorder.AUDIO_DEVICE || mode == ScreenRecorder.AUDIO_BOTH
+            if (needsDevice && !ScreenRecorder.deviceAudioSupported()) {
+                Toast.makeText(this, R.string.record_audio_unsupported, Toast.LENGTH_LONG).show()
+            }
+
             getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
                 .edit()
-                .putBoolean(ScreenshotService.KEY_RECORD_AUDIO, isChecked)
+                .putString(ScreenshotService.KEY_AUDIO_MODE, mode)
                 .apply()
         }
 
@@ -346,7 +361,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else if (requestCode == AUDIO_PERMISSION_REQUEST) {
             if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                recordAudioSwitch.isChecked = false
+                findViewById<RadioButton>(R.id.audioNone).isChecked = true
                 Toast.makeText(this, R.string.record_audio_needed, Toast.LENGTH_LONG).show()
             }
         }
@@ -442,11 +457,17 @@ class MainActivity : AppCompatActivity() {
         val quickShare = prefs.getBoolean(ScreenshotService.KEY_QUICK_SHARE, true)
         quickShareSwitch.isChecked = quickShare
 
-        recordAudioSwitch.isChecked =
-            prefs.getBoolean(ScreenshotService.KEY_RECORD_AUDIO, true) &&
-                    ContextCompat.checkSelfPermission(
-                        this, Manifest.permission.RECORD_AUDIO
-                    ) == PackageManager.PERMISSION_GRANTED
+        val audioMode = prefs.getString(
+            ScreenshotService.KEY_AUDIO_MODE, ScreenRecorder.AUDIO_DEVICE
+        ) ?: ScreenRecorder.AUDIO_DEVICE
+        findViewById<RadioButton>(
+            when (audioMode) {
+                ScreenRecorder.AUDIO_MIC -> R.id.audioMic
+                ScreenRecorder.AUDIO_BOTH -> R.id.audioBoth
+                ScreenRecorder.AUDIO_NONE -> R.id.audioNone
+                else -> R.id.audioDevice
+            }
+        ).isChecked = true
 
         val autoRename = prefs.getBoolean(ScreenshotService.KEY_AUTO_RENAME, false)
         autoRenameSwitch.isChecked = autoRename
