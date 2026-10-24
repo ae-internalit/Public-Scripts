@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DoubleTap Screenshot</string>
-    <string name="app_subtitle">Double-tap anywhere to capture your screen</string>
-    <string name="app_subtitle_shake">Shake your phone to capture your screen</string>
-    <string name="app_subtitle_volume">Volume Down then Up to capture your screen</string>
-    <string name="app_subtitle_a11y">Tap the floating button to capture your screen</string>
+    <string name="app_subtitle">Double-tap a screen corner to capture</string>
+    <string name="app_subtitle_a11y">Two-finger swipe up to capture</string>
 
     <string name="status_active">Active</string>
     <string name="status_inactive">Not Enabled</string>
@@ -17,16 +15,9 @@
     <string name="button_resume">Resume Detection</string>
 
     <string name="trigger_label">Trigger Method</string>
-    <string name="trigger_double_tap">Double-Tap — tap twice quickly in the trigger zone</string>
-    <string name="trigger_shake">Shake — shake your phone to capture</string>
-    <string name="trigger_volume">Volume Keys — press Volume Down then Volume Up</string>
-    <string name="trigger_a11y">Accessibility Button — tap the floating system button</string>
+    <string name="trigger_double_tap">Double-Tap — tap twice in any screen corner</string>
+    <string name="trigger_a11y">Two-Finger Swipe — swipe up from the bottom with two fingers</string>
 
-    <string name="quicktap_title">Best option: your phone\'s built-in gesture</string>
-    <string name="quicktap_desc">Pixel phones can take a screenshot when you double-tap the BACK of the phone. It cannot be triggered by swiping or tapping the screen, so it never fires by accident.\n\nSettings → System → Gestures → Quick Tap → Take screenshot</string>
-    <string name="quicktap_button">Open Gesture Settings</string>
-
-    <string name="a11y_button_hint">Turn this on in Settings → Accessibility → DoubleTap Screenshot → Shortcut, then tap the floating button to capture.</string>
     <string name="history_needs_permission">Permission to read photos is required to list your screenshots. Grant it in Settings → Apps → DoubleTap Screenshot → Permissions.</string>
 
     <string name="version_format">Version %1$s</string>
@@ -35,39 +26,17 @@
     <string name="crash_dismiss">Clear</string>
     <string name="crash_copied">Crash details copied — paste them to report the problem</string>
 
-    <string name="zone_label">Trigger Zone</string>
-    <string name="zone_desc">Taps only count inside this area. Restricting the zone is the only reliable way to stop apps\' own double-tap gestures (zoom, like, select text) from firing screenshots.</string>
-    <string name="zone_corners">Screen corners — recommended, almost no app uses them</string>
-    <string name="zone_top">Top of screen — the status bar strip</string>
-    <string name="zone_bottom">Bottom of screen — below the content area</string>
-    <string name="zone_anywhere">Anywhere — expect false triggers in many apps</string>
-
     <string name="smart_features_label">Smart Features</string>
     <string name="smart_keyboard_title">Smart Keyboard Detection</string>
     <string name="smart_keyboard_desc">Pause capture while you type. Detects the keyboard window, a focused text field, and recent typing, so it works even with keyboards that hide themselves from the system.</string>
 
-    <string name="sensitivity_label">Double-Tap Speed</string>
-    <string name="sensitivity_fast">Fast — requires quick taps (less false triggers)</string>
-    <string name="sensitivity_normal">Normal — balanced (recommended)</string>
-    <string name="sensitivity_slow">Relaxed — more time between taps (easier to trigger)</string>
+    <string name="instruction_setup">To get started:\n\n1. Tap the button above\n2. Find \"DoubleTap Screenshot\" in the list\n3. Toggle it ON and confirm\n\nOnce enabled, choose a trigger below. Nothing visible is added to your screen.</string>
 
-    <string name="tap_count_label">Tap Count</string>
-    <string name="tap_count_double">Double-Tap — two taps to capture</string>
-    <string name="tap_count_triple">Triple-Tap — three taps to capture (fewer false triggers)</string>
+    <string name="instruction_active">Double-tap any corner of the screen to take a screenshot.\n\nOnly the corners respond, because a double-tap in the middle of the screen is the same gesture apps use for zoom and like.\n\nA short vibration confirms the capture, and there is a 2-second cooldown.</string>
 
-    <string name="instruction_setup">To get started:\n\n1. Tap the button above\n2. Find \"DoubleTap Screenshot\" in the list\n3. Toggle it ON and confirm\n\nOnce enabled, double-tap anywhere on your screen to take a screenshot. Nothing visible is added to your screen.</string>
-
-    <string name="instruction_active">Double-tap inside your Trigger Zone to take a screenshot.\nFour taps start/stop screen recording.\n\nA short vibration confirms the capture. There is a 2-second cooldown between screenshots.\n\nIf screenshots fire by accident, set the Trigger Zone to Screen Corners below.</string>
-
-    <string name="instruction_active_shake">Shake your phone to take a screenshot.\n\nA short vibration confirms the capture. There is a 2-second cooldown between screenshots.</string>
-
-    <string name="instruction_active_volume">Press Volume Down then Volume Up quickly to take a screenshot.\n\nThe two presses cancel out, so your volume stays where it was. This trigger never fires by accident from tapping.</string>
-
-    <string name="instruction_active_a11y">Tap the floating accessibility button to take a screenshot.\n\nIf you do not see it, enable it in Settings → Accessibility → DoubleTap Screenshot → Shortcut. Android draws and positions the button, so swipes and taps never trigger it by accident.</string>
+    <string name="instruction_active_a11y">Swipe up from the bottom of the screen with two fingers to take a screenshot.\n\nChoose between the two-finger swipe and a floating button in Settings → Accessibility → DoubleTap Screenshot → Shortcut. Android recognises the gesture itself, so it never fires by accident.</string>
 
     <string name="instruction_paused">Detection is paused. Tap Resume to start capturing screenshots again.</string>
-
-    <string name="instruction_active_triple">Triple-tap inside your Trigger Zone to take a screenshot.\nFive taps start/stop screen recording.\n\nA short vibration confirms the capture. Three taps reduces false triggers further.</string>
 
     <string name="excluded_apps_button">Excluded Apps</string>
     <string name="excluded_apps_title">Excluded Apps</string>
@@ -75,20 +44,11 @@
     <string name="excluded_apps_count">%d app(s) excluded</string>
     <string name="excluded_apps_none">No apps excluded</string>
 
-    <string name="delay_label">Screenshot Delay</string>
-    <string name="delay_none">None — instant capture</string>
-    <string name="delay_3s">3 seconds — countdown before capture</string>
-    <string name="delay_5s">5 seconds — more time to prepare</string>
-    <string name="delay_countdown">Screenshot in %d…</string>
-
     <string name="vibration_label">Vibration Feedback</string>
     <string name="vibration_none">None — silent capture</string>
     <string name="vibration_short">Short — quick buzz (default)</string>
     <string name="vibration_long">Long — stronger feedback</string>
     <string name="vibration_double">Double — two quick buzzes</string>
-
-    <string name="screenshot_count_format">%d screenshots taken</string>
-    <string name="screenshot_count_zero">No screenshots taken yet</string>
 
     <string name="screenshot_failed">Screenshot failed</string>
 
@@ -109,8 +69,6 @@
     <string name="quick_share_title">Quick Share</string>
     <string name="quick_share_desc">Show share popup after taking a screenshot</string>
 
-    <string name="blur_editor_title">Blur / Redact</string>
-    <string name="blur_editor_hint">Draw rectangles over areas to blur</string>
     <string name="blur_cancel">Cancel</string>
     <string name="blur_save">Save</string>
     <string name="blur_share">Share</string>
@@ -135,10 +93,6 @@
     <!-- Watermark -->
     <string name="watermark_title">Add Watermark</string>
     <string name="watermark_hint">Enter watermark text</string>
-    <string name="watermark_label">Screenshot Watermark</string>
-    <string name="watermark_switch_title">Auto-Watermark</string>
-    <string name="watermark_switch_desc">Automatically add watermark text to screenshots</string>
-    <string name="watermark_text_label">Watermark Text</string>
 
     <!-- OCR -->
     <string name="ocr_working">Reading text…</string>
@@ -146,7 +100,6 @@
     <string name="ocr_select_all">Select All</string>
     <string name="ocr_select_none">Clear</string>
 
-    <string name="ocr_result_title">Extracted Text</string>
     <string name="ocr_copy">Copy</string>
     <string name="ocr_copied">Text copied to clipboard</string>
     <string name="ocr_no_text">No text found in image</string>
@@ -158,16 +111,10 @@
     <string name="history_button">Screenshot Gallery</string>
 
     <!-- Stitch -->
-    <string name="stitch_title">Stitch Screenshots</string>
-    <string name="stitch_hint">Select screenshots to combine vertically</string>
-    <string name="stitch_btn">Stitch</string>
-    <string name="stitch_action">Stitch Selected</string>
 
     <!-- Screen Record -->
-    <string name="record_button">Screen Recording</string>
     <string name="record_start">Start Recording</string>
     <string name="record_stop">Stop Recording</string>
-    <string name="record_desc">Record your screen — tap to start, notification to stop</string>
     <string name="record_audio_title">Recording Audio</string>
     <string name="record_audio_desc">Device audio captures the sound playing inside other apps. Some apps block capture and will stay silent; music and video apps often do.</string>
     <string name="record_audio_device">Device audio — sound from apps and games</string>

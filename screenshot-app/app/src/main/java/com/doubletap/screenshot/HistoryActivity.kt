@@ -27,10 +27,7 @@ class HistoryActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.historyRecycler)
         emptyText = findViewById(R.id.emptyText)
         val backBtn = findViewById<Button>(R.id.btnBack)
-        val stitchBtn = findViewById<Button>(R.id.btnStitch)
-
         backBtn.setOnClickListener { finish() }
-        stitchBtn.setOnClickListener { openStitch() }
 
         // A tap shows what this app can do with the screenshot. Handing it
         // straight to an external viewer hid every feature behind a long-press.
@@ -179,10 +176,6 @@ class HistoryActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun openStitch() {
-        val intent = Intent(this, StitchActivity::class.java)
-        startActivity(intent)
-    }
 }
 
 data class ScreenshotItem(

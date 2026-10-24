@@ -30,25 +30,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var actionButton: Button
     private lateinit var pauseButton: Button
     private lateinit var instructionText: TextView
-    private lateinit var sensitivityGroup: RadioGroup
-    private lateinit var sensitivityLabel: TextView
     private lateinit var triggerGroup: RadioGroup
-    private lateinit var zoneGroup: RadioGroup
-    private lateinit var zoneLabel: TextView
-    private lateinit var zoneDesc: TextView
     private lateinit var smartKeyboardSwitch: SwitchCompat
     private lateinit var excludedAppsButton: Button
-    private lateinit var delayGroup: RadioGroup
     private lateinit var vibrationGroup: RadioGroup
-    private lateinit var screenshotCount: TextView
     private lateinit var themeGroup: RadioGroup
-    private lateinit var tapCountGroup: RadioGroup
-    private lateinit var tapCountLabel: TextView
     private lateinit var autoRenameSwitch: SwitchCompat
     private lateinit var quickShareSwitch: SwitchCompat
     private lateinit var audioGroup: RadioGroup
-    private lateinit var watermarkSwitch: SwitchCompat
-    private lateinit var watermarkTextInput: EditText
     private lateinit var historyButton: Button
     private lateinit var recordButton: Button
     private lateinit var crashCard: View
@@ -73,25 +62,14 @@ class MainActivity : AppCompatActivity() {
         actionButton = findViewById(R.id.actionButton)
         pauseButton = findViewById(R.id.pauseButton)
         instructionText = findViewById(R.id.instructionText)
-        sensitivityGroup = findViewById(R.id.sensitivityGroup)
-        sensitivityLabel = findViewById(R.id.sensitivityLabel)
         triggerGroup = findViewById(R.id.triggerGroup)
-        zoneGroup = findViewById(R.id.zoneGroup)
-        zoneLabel = findViewById(R.id.zoneLabel)
-        zoneDesc = findViewById(R.id.zoneDesc)
         smartKeyboardSwitch = findViewById(R.id.smartKeyboardSwitch)
         excludedAppsButton = findViewById(R.id.excludedAppsButton)
-        delayGroup = findViewById(R.id.delayGroup)
         vibrationGroup = findViewById(R.id.vibrationGroup)
-        screenshotCount = findViewById(R.id.screenshotCount)
         themeGroup = findViewById(R.id.themeGroup)
-        tapCountGroup = findViewById(R.id.tapCountGroup)
-        tapCountLabel = findViewById(R.id.tapCountLabel)
         autoRenameSwitch = findViewById(R.id.autoRenameSwitch)
         quickShareSwitch = findViewById(R.id.quickShareSwitch)
         audioGroup = findViewById(R.id.audioGroup)
-        watermarkSwitch = findViewById(R.id.watermarkSwitch)
-        watermarkTextInput = findViewById(R.id.watermarkTextInput)
         historyButton = findViewById(R.id.historyButton)
         recordButton = findViewById(R.id.recordButton)
         crashCard = findViewById(R.id.crashCard)
@@ -103,21 +81,6 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.version_format, appVersion(this))
 
         requestStartupPermissions()
-
-        findViewById<Button>(R.id.quickTapButton).setOnClickListener {
-            // No public Settings action targets Quick Tap directly, so land the
-            // user on the closest screen Android does expose.
-            val intents = listOf(
-                Intent("android.settings.GESTURE_SETTINGS"),
-                Intent(Settings.ACTION_SETTINGS)
-            )
-            for (intent in intents) {
-                try {
-                    startActivity(intent)
-                    return@setOnClickListener
-                } catch (_: Exception) {}
-            }
-        }
 
         actionButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -164,8 +127,6 @@ class MainActivity : AppCompatActivity() {
 
         triggerGroup.setOnCheckedChangeListener { _, checkedId ->
             val mode = when (checkedId) {
-                R.id.triggerShake -> ScreenshotService.MODE_SHAKE
-                R.id.triggerVolume -> ScreenshotService.MODE_VOLUME
                 R.id.triggerA11y -> ScreenshotService.MODE_A11Y_BUTTON
                 else -> ScreenshotService.MODE_DOUBLE_TAP
             }
@@ -174,25 +135,8 @@ class MainActivity : AppCompatActivity() {
                 .putString(ScreenshotService.KEY_TRIGGER_MODE, mode)
                 .apply()
             ScreenshotService.instance?.setTriggerMode(mode)
-            updateSensitivityVisibility(mode)
-            updateTapCountVisibility(mode)
-            updateZoneVisibility(mode)
-            updateSubtitle(mode)
+                    updateSubtitle(mode)
             updateInstructions()
-        }
-
-        zoneGroup.setOnCheckedChangeListener { _, checkedId ->
-            val zone = when (checkedId) {
-                R.id.zoneTop -> ScreenshotService.ZONE_TOP
-                R.id.zoneBottom -> ScreenshotService.ZONE_BOTTOM
-                R.id.zoneAnywhere -> ScreenshotService.ZONE_ANYWHERE
-                else -> ScreenshotService.ZONE_CORNERS
-            }
-            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
-                .edit()
-                .putString(ScreenshotService.KEY_TRIGGER_ZONE, zone)
-                .apply()
-            ScreenshotService.instance?.setTriggerZone(zone)
         }
 
         smartKeyboardSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -252,67 +196,8 @@ class MainActivity : AppCompatActivity() {
             ScreenshotService.instance?.setAutoRename(isChecked)
         }
 
-        watermarkSwitch.setOnCheckedChangeListener { _, isChecked ->
-            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
-                .edit()
-                .putBoolean(ScreenshotService.KEY_WATERMARK, isChecked)
-                .apply()
-            ScreenshotService.instance?.setWatermark(isChecked)
-            watermarkTextInput.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
-
-        watermarkTextInput.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val text = watermarkTextInput.text.toString()
-                getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
-                    .edit()
-                    .putString(ScreenshotService.KEY_WATERMARK_TEXT, text)
-                    .apply()
-                ScreenshotService.instance?.setWatermarkText(text)
-            }
-        }
-
         excludedAppsButton.setOnClickListener {
             startActivity(Intent(this, ExcludedAppsActivity::class.java))
-        }
-
-        sensitivityGroup.setOnCheckedChangeListener { _, checkedId ->
-            val ms = when (checkedId) {
-                R.id.sensitivityFast -> 180L
-                R.id.sensitivityNormal -> 250L
-                R.id.sensitivitySlow -> 350L
-                else -> 250L
-            }
-            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
-                .edit()
-                .putLong(ScreenshotService.KEY_SENSITIVITY, ms)
-                .apply()
-        }
-
-        tapCountGroup.setOnCheckedChangeListener { _, checkedId ->
-            val count = when (checkedId) {
-                R.id.tapCountTriple -> 3
-                else -> 2
-            }
-            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
-                .edit()
-                .putInt(ScreenshotService.KEY_TAP_COUNT, count)
-                .apply()
-            ScreenshotService.instance?.setTapCount(count)
-            updateInstructions()
-        }
-
-        delayGroup.setOnCheckedChangeListener { _, checkedId ->
-            val seconds = when (checkedId) {
-                R.id.delay3s -> 3
-                R.id.delay5s -> 5
-                else -> 0
-            }
-            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
-                .edit()
-                .putInt(ScreenshotService.KEY_DELAY_SECONDS, seconds)
-                .apply()
-            ScreenshotService.instance?.setDelaySeconds(seconds)
         }
 
         vibrationGroup.setOnCheckedChangeListener { _, checkedId ->
@@ -452,37 +337,14 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<RadioButton>(themeId).isChecked = true
 
-        val ms = prefs.getLong(ScreenshotService.KEY_SENSITIVITY, ScreenshotService.DEFAULT_SENSITIVITY)
-        val sensitivityId = when {
-            ms <= 180L -> R.id.sensitivityFast
-            ms <= 250L -> R.id.sensitivityNormal
-            else -> R.id.sensitivitySlow
-        }
-        findViewById<RadioButton>(sensitivityId).isChecked = true
-
         val mode = prefs.getString(ScreenshotService.KEY_TRIGGER_MODE, ScreenshotService.MODE_DOUBLE_TAP)
             ?: ScreenshotService.MODE_DOUBLE_TAP
         val triggerId = when (mode) {
-            ScreenshotService.MODE_SHAKE -> R.id.triggerShake
-            ScreenshotService.MODE_VOLUME -> R.id.triggerVolume
             ScreenshotService.MODE_A11Y_BUTTON -> R.id.triggerA11y
             else -> R.id.triggerDoubleTap
         }
         findViewById<RadioButton>(triggerId).isChecked = true
 
-        val zone = prefs.getString(ScreenshotService.KEY_TRIGGER_ZONE, ScreenshotService.DEFAULT_ZONE)
-            ?: ScreenshotService.DEFAULT_ZONE
-        val zoneId = when (zone) {
-            ScreenshotService.ZONE_TOP -> R.id.zoneTop
-            ScreenshotService.ZONE_BOTTOM -> R.id.zoneBottom
-            ScreenshotService.ZONE_ANYWHERE -> R.id.zoneAnywhere
-            else -> R.id.zoneCorners
-        }
-        findViewById<RadioButton>(zoneId).isChecked = true
-
-        updateSensitivityVisibility(mode)
-        updateTapCountVisibility(mode)
-        updateZoneVisibility(mode)
         updateSubtitle(mode)
 
         val smartKeyboard = prefs.getBoolean(ScreenshotService.KEY_SMART_KEYBOARD, true)
@@ -506,32 +368,12 @@ class MainActivity : AppCompatActivity() {
         val autoRename = prefs.getBoolean(ScreenshotService.KEY_AUTO_RENAME, false)
         autoRenameSwitch.isChecked = autoRename
 
-        val watermark = prefs.getBoolean(ScreenshotService.KEY_WATERMARK, false)
-        watermarkSwitch.isChecked = watermark
-        watermarkTextInput.visibility = if (watermark) View.VISIBLE else View.GONE
-        watermarkTextInput.setText(prefs.getString(ScreenshotService.KEY_WATERMARK_TEXT, ""))
-
         val excludedCount = (prefs.getStringSet(ScreenshotService.KEY_EXCLUDED_APPS, emptySet()) ?: emptySet()).size
         excludedAppsButton.text = if (excludedCount == 0) {
             getString(R.string.excluded_apps_button)
         } else {
             getString(R.string.excluded_apps_count, excludedCount)
         }
-
-        val tapCount = prefs.getInt(ScreenshotService.KEY_TAP_COUNT, 2)
-        val tapCountId = when (tapCount) {
-            3 -> R.id.tapCountTriple
-            else -> R.id.tapCountDouble
-        }
-        findViewById<RadioButton>(tapCountId).isChecked = true
-
-        val delaySeconds = prefs.getInt(ScreenshotService.KEY_DELAY_SECONDS, 0)
-        val delayId = when (delaySeconds) {
-            3 -> R.id.delay3s
-            5 -> R.id.delay5s
-            else -> R.id.delayNone
-        }
-        findViewById<RadioButton>(delayId).isChecked = true
 
         val vibPattern = prefs.getString(ScreenshotService.KEY_VIBRATION_PATTERN, "short") ?: "short"
         val vibId = when (vibPattern) {
@@ -543,43 +385,19 @@ class MainActivity : AppCompatActivity() {
         findViewById<RadioButton>(vibId).isChecked = true
     }
 
-    private fun updateSensitivityVisibility(mode: String) {
-        val visibility = if (mode == ScreenshotService.MODE_DOUBLE_TAP) View.VISIBLE else View.GONE
-        sensitivityLabel.visibility = visibility
-        sensitivityGroup.visibility = visibility
-    }
-
-    private fun updateTapCountVisibility(mode: String) {
-        val visibility = if (mode == ScreenshotService.MODE_DOUBLE_TAP) View.VISIBLE else View.GONE
-        tapCountLabel.visibility = visibility
-        tapCountGroup.visibility = visibility
-    }
-
-    private fun updateZoneVisibility(mode: String) {
-        val visibility = if (mode == ScreenshotService.MODE_DOUBLE_TAP) View.VISIBLE else View.GONE
-        zoneLabel.visibility = visibility
-        zoneDesc.visibility = visibility
-        zoneGroup.visibility = visibility
-    }
-
     private fun updateSubtitle(mode: String) {
         subtitleText.text = getString(
-            when (mode) {
-                ScreenshotService.MODE_SHAKE -> R.string.app_subtitle_shake
-                ScreenshotService.MODE_VOLUME -> R.string.app_subtitle_volume
-                ScreenshotService.MODE_A11Y_BUTTON -> R.string.app_subtitle_a11y
-                else -> R.string.app_subtitle
-            }
+            if (mode == ScreenshotService.MODE_A11Y_BUTTON) R.string.app_subtitle_a11y
+            else R.string.app_subtitle
         )
     }
 
-    private fun instructionFor(mode: String, tapCount: Int): String = when {
-        mode == ScreenshotService.MODE_SHAKE -> getString(R.string.instruction_active_shake)
-        mode == ScreenshotService.MODE_VOLUME -> getString(R.string.instruction_active_volume)
-        mode == ScreenshotService.MODE_A11Y_BUTTON -> getString(R.string.instruction_active_a11y)
-        tapCount == 3 -> getString(R.string.instruction_active_triple)
-        else -> getString(R.string.instruction_active)
-    }
+    private fun instructionFor(mode: String): String =
+        if (mode == ScreenshotService.MODE_A11Y_BUTTON) {
+            getString(R.string.instruction_active_a11y)
+        } else {
+            getString(R.string.instruction_active)
+        }
 
     private fun updateInstructions() {
         if (!isServiceEnabled()) return
@@ -588,8 +406,7 @@ class MainActivity : AppCompatActivity() {
         if (!active) return
         val mode = prefs.getString(ScreenshotService.KEY_TRIGGER_MODE, ScreenshotService.MODE_DOUBLE_TAP)
             ?: ScreenshotService.MODE_DOUBLE_TAP
-        val tapCount = prefs.getInt(ScreenshotService.KEY_TAP_COUNT, 2)
-        instructionText.text = instructionFor(mode, tapCount)
+        instructionText.text = instructionFor(mode)
     }
 
     private fun updateStatus() {
@@ -598,14 +415,6 @@ class MainActivity : AppCompatActivity() {
         val detectionActive = prefs.getBoolean(ScreenshotService.KEY_ACTIVE, true)
         val mode = prefs.getString(ScreenshotService.KEY_TRIGGER_MODE, ScreenshotService.MODE_DOUBLE_TAP)
             ?: ScreenshotService.MODE_DOUBLE_TAP
-        val tapCount = prefs.getInt(ScreenshotService.KEY_TAP_COUNT, 2)
-
-        val count = prefs.getInt(ScreenshotService.KEY_SCREENSHOT_COUNT, 0)
-        screenshotCount.text = if (count == 0) {
-            getString(R.string.screenshot_count_zero)
-        } else {
-            getString(R.string.screenshot_count_format, count)
-        }
 
         if (serviceEnabled && detectionActive) {
             statusIcon.setImageResource(R.drawable.ic_check_circle)
@@ -613,7 +422,7 @@ class MainActivity : AppCompatActivity() {
             statusText.text = getString(R.string.status_active)
             statusText.setTextColor(getColor(R.color.green))
             actionButton.text = getString(R.string.button_settings)
-            instructionText.text = instructionFor(mode, tapCount)
+            instructionText.text = instructionFor(mode)
             pauseButton.text = getString(R.string.button_pause)
             pauseButton.isEnabled = true
         } else if (serviceEnabled && !detectionActive) {
