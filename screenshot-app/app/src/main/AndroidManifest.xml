@@ -8,8 +8,15 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
+    <!-- The excluded-apps picker only lists launchable apps, so a scoped
+         <queries> declaration covers it. QUERY_ALL_PACKAGES is both broader
+         than needed and a well-known Play Protect heuristic trigger. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- Without these, MediaStore returns only images this app created, so the

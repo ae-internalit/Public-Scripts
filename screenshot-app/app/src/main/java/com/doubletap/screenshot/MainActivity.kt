@@ -99,6 +99,9 @@ class MainActivity : AppCompatActivity() {
         crashCopyButton = findViewById(R.id.crashCopyButton)
         crashClearButton = findViewById(R.id.crashClearButton)
 
+        findViewById<TextView>(R.id.versionText).text =
+            getString(R.string.version_format, appVersion(this))
+
         requestStartupPermissions()
 
         findViewById<Button>(R.id.quickTapButton).setOnClickListener {

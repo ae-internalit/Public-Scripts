@@ -82,6 +82,17 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/titleText" />
 
+        <TextView
+            android:id="@+id/versionText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/subtitleText" />
+
         <!-- Theme Card -->
         <TextView
             android:id="@+id/themeLabel"
@@ -92,7 +103,7 @@
             android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:layout_constraintTop_toBottomOf="@id/subtitleText" />
+            app:layout_constraintTop_toBottomOf="@id/versionText" />
 
         <RadioGroup
             android:id="@+id/themeGroup"

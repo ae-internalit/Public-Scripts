@@ -2,6 +2,20 @@ package com.doubletap.screenshot
 
 import android.app.Application
 import android.content.Context
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+fun appVersion(context: Context): String = try {
+    context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
+} catch (_: Exception) {
+    "?"
+}
+
+fun errorHeader(context: Context): String {
+    val time = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())
+    return "App v${appVersion(context)} · $time\n"
+}
 
 /**
  * Records the last fatal error so the app can show it on next launch. Crashes
@@ -26,6 +40,9 @@ class ScreenshotApp : Application() {
     }
 
     private fun describe(error: Throwable): String = buildString {
+        // Stamped so a report that survived an update is not mistaken for a
+        // fresh one; the card deliberately keeps errors until cleared.
+        append(errorHeader(this@ScreenshotApp))
         append(error.toString()).append('\n')
         error.stackTrace.take(14).forEach { append("  at ").append(it).append('\n') }
         var cause = error.cause
