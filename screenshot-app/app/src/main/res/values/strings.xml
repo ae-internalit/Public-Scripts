@@ -29,6 +29,11 @@
     <string name="a11y_button_hint">Turn this on in Settings → Accessibility → DoubleTap Screenshot → Shortcut, then tap the floating button to capture.</string>
     <string name="history_needs_permission">Permission to read photos is required to list your screenshots. Grant it in Settings → Apps → DoubleTap Screenshot → Permissions.</string>
 
+    <string name="crash_title">The app crashed last time</string>
+    <string name="crash_copy">Copy Details</string>
+    <string name="crash_dismiss">Dismiss</string>
+    <string name="crash_copied">Crash details copied — paste them to report the problem</string>
+
     <string name="zone_label">Trigger Zone</string>
     <string name="zone_desc">Taps only count inside this area. Restricting the zone is the only reliable way to stop apps\' own double-tap gestures (zoom, like, select text) from firing screenshots.</string>
     <string name="zone_corners">Screen corners — recommended, almost no app uses them</string>
