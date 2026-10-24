@@ -153,6 +153,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val KEY_THEME = "theme_mode"
         const val KEY_WATERMARK = "watermark_enabled"
         const val KEY_WATERMARK_TEXT = "watermark_text"
+        const val KEY_LAST_CRASH = "last_crash"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
         private const val MIN_TAP_GAP = 40L
         private const val SWIPE_VELOCITY_THRESHOLD = 0.8f
@@ -195,12 +196,20 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             accessibilityButtonCallback =
                 object : AccessibilityButtonController.AccessibilityButtonCallback() {
                     override fun onClicked(controller: AccessibilityButtonController) {
-                        if (!isActive) return
-                        if (currentForegroundPackage in excludedApps) return
-                        val now = System.currentTimeMillis()
-                        if (now - lastScreenshotTime < COOLDOWN_MS) return
-                        lastScreenshotTime = now
-                        takeScreenshot()
+                        try {
+                            if (!isActive) return
+                            if (currentForegroundPackage in excludedApps) return
+                            val now = System.currentTimeMillis()
+                            if (now - lastScreenshotTime < COOLDOWN_MS) return
+                            lastScreenshotTime = now
+                            takeScreenshot()
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                this@ScreenshotService,
+                                "Screenshot failed: $e",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                 }
             accessibilityButtonCallback?.let {
@@ -574,12 +583,16 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             registerScreenshotObserver(shouldRename, shouldWatermark)
         }
 
-        val showQuickShare = quickShareEnabled
-        if (showQuickShare) {
-            quickSharePopup?.dismiss()
-            val popup = QuickSharePopup(this)
-            quickSharePopup = popup
-            popup.listenForScreenshot()
+        // The capture itself must survive anything the popup does wrong.
+        if (quickShareEnabled) {
+            try {
+                quickSharePopup?.dismiss()
+                val popup = QuickSharePopup(this)
+                quickSharePopup = popup
+                popup.listenForScreenshot()
+            } catch (_: Exception) {
+                quickSharePopup = null
+            }
         }
 
         val success = performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)

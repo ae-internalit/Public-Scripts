@@ -31,10 +31,13 @@ class QuickSharePopup(private val context: Context) {
         val observer = object : ContentObserver(handler) {
             override fun onChange(selfChange: Boolean, uri: Uri?) {
                 super.onChange(selfChange, uri)
-                unregisterObserver()
-                findLatestScreenshot()?.let { screenshotUri ->
-                    latestScreenshotUri = screenshotUri
-                    handler.post { showPopup() }
+                try {
+                    unregisterObserver()
+                    findLatestScreenshot()?.let { screenshotUri ->
+                        latestScreenshotUri = screenshotUri
+                        handler.post { showPopup() }
+                    }
+                } catch (_: Exception) {
                 }
             }
         }
@@ -72,6 +75,10 @@ class QuickSharePopup(private val context: Context) {
     }
 
     private fun showPopup() {
+        // Re-entrant: the observer can deliver several onChange callbacks for a
+        // single capture, and a second addView would leak the first overlay.
+        if (popupView != null) return
+
         windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         val inflater = LayoutInflater.from(context)
@@ -113,7 +120,13 @@ class QuickSharePopup(private val context: Context) {
             dismiss()
         }
 
-        windowManager?.addView(view, params)
+        try {
+            windowManager?.addView(view, params)
+        } catch (e: Exception) {
+            popupView = null
+            Toast.makeText(context, "Quick Share popup failed: $e", Toast.LENGTH_LONG).show()
+            return
+        }
 
         handler.postDelayed({ dismiss() }, 8000)
     }

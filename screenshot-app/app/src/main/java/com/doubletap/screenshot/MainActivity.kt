@@ -321,8 +321,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showLastCrashIfAny() {
+        val prefs = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+        val crash = prefs.getString(ScreenshotService.KEY_LAST_CRASH, null)
+        if (crash.isNullOrEmpty()) return
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.crash_title)
+            .setMessage(crash)
+            .setPositiveButton(R.string.crash_copy) { _, _ ->
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(
+                    android.content.ClipData.newPlainText("crash", crash)
+                )
+                prefs.edit().remove(ScreenshotService.KEY_LAST_CRASH).apply()
+                Toast.makeText(this, R.string.crash_copied, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.crash_dismiss) { _, _ ->
+                prefs.edit().remove(ScreenshotService.KEY_LAST_CRASH).apply()
+            }
+            .show()
+    }
+
     override fun onResume() {
         super.onResume()
+        showLastCrashIfAny()
         updateStatus()
         loadSettings()
         recordButton.text = if (ScreenRecordService.isRunning) {
