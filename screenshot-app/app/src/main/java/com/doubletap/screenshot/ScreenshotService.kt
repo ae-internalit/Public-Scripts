@@ -1,5 +1,6 @@
 package com.doubletap.screenshot
 
+import android.accessibilityservice.AccessibilityButtonController
 import android.accessibilityservice.AccessibilityService
 import android.app.Notification
 import android.app.NotificationChannel
@@ -76,6 +77,8 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private val handler = Handler(Looper.getMainLooper())
     private var screenshotObserver: ContentObserver? = null
     private var screenshotPendingRunnable: Runnable? = null
+    private var accessibilityButtonCallback:
+            AccessibilityButtonController.AccessibilityButtonCallback? = null
 
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -133,6 +136,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val MODE_DOUBLE_TAP = "double_tap"
         const val MODE_SHAKE = "shake"
         const val MODE_VOLUME = "volume"
+        const val MODE_A11Y_BUTTON = "a11y_button"
         const val KEY_TRIGGER_ZONE = "trigger_zone"
         const val ZONE_ANYWHERE = "anywhere"
         const val ZONE_CORNERS = "corners"
@@ -163,8 +167,9 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         private const val RECORDING_TAP_DELAY = 250L
         private const val TYPING_WINDOW_MS = 2000L
         private const val VOLUME_COMBO_WINDOW_MS = 700L
-        private const val ZONE_CORNER_DP = 120f
+        private const val ZONE_CORNER_DP = 160f
         private const val ZONE_EDGE_FRACTION = 0.12f
+        private const val SYSTEM_GESTURE_MARGIN_DP = 48f
 
         var instance: ScreenshotService? = null
             private set
@@ -178,6 +183,30 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         registerScreenshotReceiver()
         createTouchDetector()
         setupShakeDetector()
+        setupAccessibilityButton()
+    }
+
+    /**
+     * The system draws and positions this button itself, so it cannot be
+     * confused with a navigation swipe or an app's own gesture.
+     */
+    private fun setupAccessibilityButton() {
+        try {
+            accessibilityButtonCallback =
+                object : AccessibilityButtonController.AccessibilityButtonCallback() {
+                    override fun onClicked(controller: AccessibilityButtonController) {
+                        if (!isActive) return
+                        if (currentForegroundPackage in excludedApps) return
+                        val now = System.currentTimeMillis()
+                        if (now - lastScreenshotTime < COOLDOWN_MS) return
+                        lastScreenshotTime = now
+                        takeScreenshot()
+                    }
+                }
+            accessibilityButtonCallback?.let {
+                accessibilityButtonController.registerAccessibilityButtonCallback(it)
+            }
+        } catch (_: Exception) {}
     }
 
     private fun createNotificationChannel() {
@@ -329,17 +358,27 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     }
 
     private fun isInTriggerZone(x: Float, y: Float): Boolean {
-        val zone = triggerZone
-        if (zone == ZONE_ANYWHERE) return true
-
         val (width, height) = screenSize()
         if (width <= 0f || height <= 0f) return true
+
+        val density = resources.displayMetrics.density
+
+        // Android owns the screen edges: notification pull at the top, the
+        // home/recents swipe at the bottom, back swipes on the sides. Those
+        // gestures start with a touch down, which is indistinguishable from a
+        // tap here, so the margins are never a trigger area.
+        val margin = SYSTEM_GESTURE_MARGIN_DP * density
+        if (y <= margin || y >= height - margin) return false
+        if (x <= margin || x >= width - margin) return false
+
+        val zone = triggerZone
+        if (zone == ZONE_ANYWHERE) return true
 
         return when (zone) {
             ZONE_TOP -> y <= height * ZONE_EDGE_FRACTION
             ZONE_BOTTOM -> y >= height * (1f - ZONE_EDGE_FRACTION)
             ZONE_CORNERS -> {
-                val box = ZONE_CORNER_DP * resources.displayMetrics.density
+                val box = ZONE_CORNER_DP * density
                 val nearX = x <= box || x >= width - box
                 val nearY = y <= box || y >= height - box
                 nearX && nearY
@@ -778,6 +817,12 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
     override fun onDestroy() {
         instance = null
+        accessibilityButtonCallback?.let {
+            try {
+                accessibilityButtonController.unregisterAccessibilityButtonCallback(it)
+            } catch (_: Exception) {}
+        }
+        accessibilityButtonCallback = null
         sensorManager?.unregisterListener(this)
         unregisterScreenshotObserver()
         quickSharePopup?.dismiss()

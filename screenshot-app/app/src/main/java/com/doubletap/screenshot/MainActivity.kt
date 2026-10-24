@@ -87,6 +87,23 @@ class MainActivity : AppCompatActivity() {
         historyButton = findViewById(R.id.historyButton)
         recordButton = findViewById(R.id.recordButton)
 
+        if (!hasMediaPermission()) requestMediaPermission()
+
+        findViewById<Button>(R.id.quickTapButton).setOnClickListener {
+            // No public Settings action targets Quick Tap directly, so land the
+            // user on the closest screen Android does expose.
+            val intents = listOf(
+                Intent("android.settings.GESTURE_SETTINGS"),
+                Intent(Settings.ACTION_SETTINGS)
+            )
+            for (intent in intents) {
+                try {
+                    startActivity(intent)
+                    return@setOnClickListener
+                } catch (_: Exception) {}
+            }
+        }
+
         actionButton.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
@@ -134,6 +151,7 @@ class MainActivity : AppCompatActivity() {
             val mode = when (checkedId) {
                 R.id.triggerShake -> ScreenshotService.MODE_SHAKE
                 R.id.triggerVolume -> ScreenshotService.MODE_VOLUME
+                R.id.triggerA11y -> ScreenshotService.MODE_A11Y_BUTTON
                 else -> ScreenshotService.MODE_DOUBLE_TAP
             }
             getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
@@ -338,6 +356,7 @@ class MainActivity : AppCompatActivity() {
         val triggerId = when (mode) {
             ScreenshotService.MODE_SHAKE -> R.id.triggerShake
             ScreenshotService.MODE_VOLUME -> R.id.triggerVolume
+            ScreenshotService.MODE_A11Y_BUTTON -> R.id.triggerA11y
             else -> R.id.triggerDoubleTap
         }
         findViewById<RadioButton>(triggerId).isChecked = true
@@ -427,6 +446,7 @@ class MainActivity : AppCompatActivity() {
             when (mode) {
                 ScreenshotService.MODE_SHAKE -> R.string.app_subtitle_shake
                 ScreenshotService.MODE_VOLUME -> R.string.app_subtitle_volume
+                ScreenshotService.MODE_A11Y_BUTTON -> R.string.app_subtitle_a11y
                 else -> R.string.app_subtitle
             }
         )
@@ -435,6 +455,7 @@ class MainActivity : AppCompatActivity() {
     private fun instructionFor(mode: String, tapCount: Int): String = when {
         mode == ScreenshotService.MODE_SHAKE -> getString(R.string.instruction_active_shake)
         mode == ScreenshotService.MODE_VOLUME -> getString(R.string.instruction_active_volume)
+        mode == ScreenshotService.MODE_A11Y_BUTTON -> getString(R.string.instruction_active_a11y)
         tapCount == 3 -> getString(R.string.instruction_active_triple)
         else -> getString(R.string.instruction_active)
     }

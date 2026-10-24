@@ -28,6 +28,10 @@ import java.io.IOException
 
 class BlurEditorActivity : AppCompatActivity() {
 
+    companion object {
+        const val EXTRA_RUN_OCR = "run_ocr"
+    }
+
     private lateinit var imageView: ImageView
     private lateinit var drawingOverlay: BlurOverlayView
     private lateinit var toolIndicator: TextView
@@ -56,6 +60,8 @@ class BlurEditorActivity : AppCompatActivity() {
 
         sourceUri = intent.data
         sourceUri?.let { loadImage(it) }
+
+        if (intent.getBooleanExtra(EXTRA_RUN_OCR, false)) extractText()
 
         saveBtn.setOnClickListener { saveImage(share = false) }
         shareBtn.setOnClickListener { saveImage(share = true) }
