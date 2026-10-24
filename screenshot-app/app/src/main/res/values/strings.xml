@@ -128,7 +128,7 @@
     <string name="ocr_copy">Copy</string>
     <string name="ocr_copied">Text copied to clipboard</string>
     <string name="ocr_no_text">No text found in image</string>
-    <string name="ocr_failed">Text extraction failed</string>
+    <string name="ocr_failed">Text extraction unavailable — the text model may still be downloading. Try again in a moment.</string>
 
     <!-- History -->
     <string name="history_title">Screenshot Gallery</string>
