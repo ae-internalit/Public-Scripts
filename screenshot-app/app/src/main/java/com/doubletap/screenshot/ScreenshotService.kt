@@ -15,10 +15,6 @@ import android.content.SharedPreferences
 import android.database.ContentObserver
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.location.Geocoder
 import android.net.Uri
 import android.os.Build
@@ -29,7 +25,6 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.MediaStore
 import android.view.Gravity
-import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -42,7 +37,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class ScreenshotService : AccessibilityService(), SensorEventListener {
+class ScreenshotService : AccessibilityService() {
 
     private var touchWindow: View? = null
     private var windowManager: WindowManager? = null
@@ -62,21 +57,10 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private var firstTouchY = 0f
     private var firstTouchTime = 0L
 
-    private var sensorManager: SensorManager? = null
-    private var accelerometer: Sensor? = null
-    private var lastShakeTime = 0L
-    private var lastAccelX = 0f
-    private var lastAccelY = 0f
-    private var lastAccelZ = 0f
-    private var lastSensorUpdate = 0L
-    private var isFirstSensorEvent = true
-
     private var lastTextChangeTime = 0L
-    private var lastVolumeDownTime = 0L
     private var currentForegroundPackage: String? = null
     private val handler = Handler(Looper.getMainLooper())
     private var screenshotObserver: ContentObserver? = null
-    private var screenshotPendingRunnable: Runnable? = null
     private var accessibilityButtonCallback:
             AccessibilityButtonController.AccessibilityButtonCallback? = null
 
@@ -91,9 +75,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private val prefs: SharedPreferences
         get() = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
-    private val sensitivity: Long
-        get() = prefs.getLong(KEY_SENSITIVITY, DEFAULT_SENSITIVITY)
-
     private val isActive: Boolean
         get() = prefs.getBoolean(KEY_ACTIVE, true)
 
@@ -106,53 +87,26 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     private val excludedApps: Set<String>
         get() = prefs.getStringSet(KEY_EXCLUDED_APPS, emptySet()) ?: emptySet()
 
-    private val requiredTapCount: Int
-        get() = prefs.getInt(KEY_TAP_COUNT, 2)
-
-    private val triggerZone: String
-        get() = prefs.getString(KEY_TRIGGER_ZONE, DEFAULT_ZONE) ?: DEFAULT_ZONE
-
     private val autoRenameEnabled: Boolean
         get() = prefs.getBoolean(KEY_AUTO_RENAME, false)
 
     private val quickShareEnabled: Boolean
         get() = prefs.getBoolean(KEY_QUICK_SHARE, true)
 
-    private val watermarkEnabled: Boolean
-        get() = prefs.getBoolean(KEY_WATERMARK, false)
-
-    private val watermarkText: String
-        get() = prefs.getString(KEY_WATERMARK_TEXT, "") ?: ""
-
     private var quickSharePopup: QuickSharePopup? = null
 
     companion object {
         const val PREFS_NAME = "screenshot_prefs"
-        const val KEY_SENSITIVITY = "sensitivity_ms"
         const val KEY_ACTIVE = "detection_active"
         const val KEY_TRIGGER_MODE = "trigger_mode"
         const val KEY_SMART_KEYBOARD = "smart_keyboard"
-        const val DEFAULT_SENSITIVITY = 250L
         const val MODE_DOUBLE_TAP = "double_tap"
-        const val MODE_SHAKE = "shake"
-        const val MODE_VOLUME = "volume"
         const val MODE_A11Y_BUTTON = "a11y_button"
-        const val KEY_TRIGGER_ZONE = "trigger_zone"
-        const val ZONE_ANYWHERE = "anywhere"
-        const val ZONE_CORNERS = "corners"
-        const val ZONE_TOP = "top"
-        const val ZONE_BOTTOM = "bottom"
-        const val DEFAULT_ZONE = ZONE_CORNERS
         const val KEY_EXCLUDED_APPS = "excluded_apps"
-        const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_VIBRATION_PATTERN = "vibration_pattern"
-        const val KEY_SCREENSHOT_COUNT = "screenshot_count"
-        const val KEY_TAP_COUNT = "tap_count"
         const val KEY_AUTO_RENAME = "auto_rename"
         const val KEY_QUICK_SHARE = "quick_share"
         const val KEY_THEME = "theme_mode"
-        const val KEY_WATERMARK = "watermark_enabled"
-        const val KEY_WATERMARK_TEXT = "watermark_text"
         const val KEY_LAST_CRASH = "last_crash"
         const val KEY_AUDIO_MODE = "record_audio_mode"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
@@ -164,13 +118,10 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         private const val MAX_TAP_DISTANCE = 100f
         private const val BURST_WINDOW_MS = 600L
         private const val MAX_TOUCHES_IN_BURST = 3
-        private const val SHAKE_THRESHOLD = 12f
-        private const val SENSOR_UPDATE_INTERVAL = 100L
-        private const val RECORDING_TAP_DELAY = 250L
         private const val TYPING_WINDOW_MS = 2000L
-        private const val VOLUME_COMBO_WINDOW_MS = 700L
-        private const val ZONE_CORNER_DP = 160f
-        private const val ZONE_EDGE_FRACTION = 0.12f
+        private const val TAP_SEQUENCE_TIMEOUT = 500L
+        private const val CORNER_DP = 160f
+        private const val TAPS_TO_CAPTURE = 2
         private const val SYSTEM_GESTURE_MARGIN_DP = 48f
 
         var instance: ScreenshotService? = null
@@ -184,7 +135,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         startForeground(NOTIFICATION_ID, buildNotification())
         registerScreenshotReceiver()
         createTouchDetector()
-        setupShakeDetector()
         setupAccessibilityButton()
     }
 
@@ -311,14 +261,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         windowManager?.addView(touchWindow, params)
     }
 
-    private fun setupShakeDetector() {
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        accelerometer?.let {
-            sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-        }
-    }
-
     private fun checkKeyboardVisible(): Boolean {
         try {
             for (window in windows) {
@@ -382,20 +324,13 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         if (y <= margin || y >= height - margin) return false
         if (x <= margin || x >= width - margin) return false
 
-        val zone = triggerZone
-        if (zone == ZONE_ANYWHERE) return true
-
-        return when (zone) {
-            ZONE_TOP -> y <= height * ZONE_EDGE_FRACTION
-            ZONE_BOTTOM -> y >= height * (1f - ZONE_EDGE_FRACTION)
-            ZONE_CORNERS -> {
-                val box = ZONE_CORNER_DP * density
-                val nearX = x <= box || x >= width - box
-                val nearY = y <= box || y >= height - box
-                nearX && nearY
-            }
-            else -> true
-        }
+        // Corners only. A double-tap in the middle of the screen is the same
+        // gesture apps use for zoom, like and select, so it cannot be told
+        // apart from one; corners are effectively unused by app gestures.
+        val box = CORNER_DP * density
+        val nearX = x <= box || x >= width - box
+        val nearY = y <= box || y >= height - box
+        return nearX && nearY
     }
 
     private fun resetTapState() {
@@ -403,8 +338,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         tapSequenceStart = 0L
         tapSequenceX = 0f
         tapSequenceY = 0f
-        screenshotPendingRunnable?.let { handler.removeCallbacks(it) }
-        screenshotPendingRunnable = null
     }
 
     /**
@@ -423,11 +356,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             prefs.edit().putString(KEY_LAST_CRASH, text).apply()
         } catch (_: Exception) {
         }
-    }
-
-    private fun toggleRecording() {
-        vibrate()
-        ScreenRecordActivity.start(this)
     }
 
     private fun isSwipeGesture(x: Float, y: Float, now: Long): Boolean {
@@ -462,8 +390,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         if (currentForegroundPackage in excludedApps) return
 
         val now = System.currentTimeMillis()
-        val required = requiredTapCount
-        val tapTimeout = sensitivity * 2
 
         if (now - lastScreenshotTime < COOLDOWN_MS) {
             resetTapState()
@@ -487,7 +413,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             return
         }
 
-        if (tapSequenceCount == 0 || now - tapSequenceStart > tapTimeout) {
+        if (tapSequenceCount == 0 || now - tapSequenceStart > TAP_SEQUENCE_TIMEOUT) {
             tapSequenceCount = 1
             tapSequenceStart = now
             tapSequenceX = x
@@ -511,97 +437,21 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
         tapSequenceCount++
 
-        val recordTapCount = required + 2
-
-        if (tapSequenceCount >= recordTapCount) {
-            screenshotPendingRunnable?.let { handler.removeCallbacks(it) }
-            screenshotPendingRunnable = null
+        if (tapSequenceCount >= TAPS_TO_CAPTURE) {
             resetTapState()
             lastScreenshotTime = now
             recentTouchCount = 0
-            toggleRecording()
-        } else if (tapSequenceCount == required) {
-            val runnable = Runnable {
-                screenshotPendingRunnable = null
-                resetTapState()
-                lastScreenshotTime = System.currentTimeMillis()
-                recentTouchCount = 0
-                takeScreenshot()
-            }
-            screenshotPendingRunnable = runnable
-            handler.postDelayed(runnable, RECORDING_TAP_DELAY)
+            takeScreenshot()
         }
     }
-
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type != Sensor.TYPE_ACCELEROMETER) return
-        if (!isActive) return
-        if (triggerMode != MODE_SHAKE) return
-        if (currentForegroundPackage in excludedApps) return
-
-        val now = System.currentTimeMillis()
-        if (now - lastSensorUpdate < SENSOR_UPDATE_INTERVAL) return
-        lastSensorUpdate = now
-
-        val x = event.values[0]
-        val y = event.values[1]
-        val z = event.values[2]
-
-        if (isFirstSensorEvent) {
-            lastAccelX = x
-            lastAccelY = y
-            lastAccelZ = z
-            isFirstSensorEvent = false
-            return
-        }
-
-        val deltaX = x - lastAccelX
-        val deltaY = y - lastAccelY
-        val deltaZ = z - lastAccelZ
-
-        lastAccelX = x
-        lastAccelY = y
-        lastAccelZ = z
-
-        val acceleration = Math.sqrt(
-            (deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ).toDouble()
-        ).toFloat()
-
-        if (acceleration > SHAKE_THRESHOLD) {
-            if (now - lastShakeTime > COOLDOWN_MS && now - lastScreenshotTime > COOLDOWN_MS) {
-                lastShakeTime = now
-                lastScreenshotTime = now
-                takeScreenshot()
-            }
-        }
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun takeScreenshot() {
-        val delay = prefs.getInt(KEY_DELAY_SECONDS, 0)
-        if (delay > 0) {
-            startCountdown(delay)
-        } else {
-            performScreenshotNow()
-        }
-    }
-
-    private fun startCountdown(seconds: Int) {
-        for (i in seconds downTo 1) {
-            handler.postDelayed({
-                Toast.makeText(this, getString(R.string.delay_countdown, i), Toast.LENGTH_SHORT).show()
-            }, ((seconds - i) * 1000).toLong())
-        }
-        handler.postDelayed({ performScreenshotNow() }, (seconds * 1000).toLong())
+        performScreenshotNow()
     }
 
     private fun performScreenshotNow() {
         val shouldRename = autoRenameEnabled
-        val shouldWatermark = watermarkEnabled && watermarkText.isNotEmpty()
-        if (shouldRename || shouldWatermark) {
-            registerScreenshotObserver(shouldRename, shouldWatermark)
-        }
+        if (shouldRename) registerScreenshotObserver()
 
         // The capture itself must survive anything the popup does wrong.
         if (quickShareEnabled) {
@@ -619,27 +469,20 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         val success = performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
         if (success) {
             vibrate()
-            val count = prefs.getInt(KEY_SCREENSHOT_COUNT, 0) + 1
-            prefs.edit().putInt(KEY_SCREENSHOT_COUNT, count).apply()
         } else {
-            if (shouldRename || shouldWatermark) {
-                unregisterScreenshotObserver()
-            }
+            if (shouldRename) unregisterScreenshotObserver()
             quickSharePopup?.dismiss()
             Toast.makeText(this, R.string.screenshot_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun registerScreenshotObserver(rename: Boolean = true, watermark: Boolean = false) {
+    private fun registerScreenshotObserver() {
         unregisterScreenshotObserver()
 
         val observer = object : ContentObserver(handler) {
             override fun onChange(selfChange: Boolean, uri: Uri?) {
                 super.onChange(selfChange, uri)
-                uri?.let {
-                    if (rename) renameScreenshot(it)
-                    if (watermark) applyWatermark(it)
-                }
+                uri?.let { renameScreenshot(it) }
                 unregisterScreenshotObserver()
             }
         }
@@ -685,35 +528,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
                 put(MediaStore.Images.Media.DISPLAY_NAME, newName)
             }
             contentResolver.update(uri, values, null, null)
-        } catch (_: Exception) {}
-    }
-
-    private fun applyWatermark(uri: Uri) {
-        try {
-            val bitmap = contentResolver.openInputStream(uri)?.use { stream ->
-                android.graphics.BitmapFactory.decodeStream(stream)
-            } ?: return
-
-            val result = bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
-            val canvas = android.graphics.Canvas(result)
-            val paint = android.graphics.Paint().apply {
-                color = android.graphics.Color.argb(128, 255, 255, 255)
-                textSize = result.width / 20f
-                isAntiAlias = true
-                setShadowLayer(4f, 2f, 2f, android.graphics.Color.argb(128, 0, 0, 0))
-            }
-
-            val text = watermarkText
-            val textWidth = paint.measureText(text)
-            val x = result.width - textWidth - 20f
-            val y = result.height - 30f
-            canvas.drawText(text, x, y, paint)
-
-            contentResolver.openOutputStream(uri, "w")?.use { out ->
-                result.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
-            }
-            bitmap.recycle()
-            result.recycle()
         } catch (_: Exception) {}
     }
 
@@ -768,24 +582,12 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         prefs.edit().putString(KEY_TRIGGER_MODE, mode).apply()
     }
 
-    fun setTriggerZone(zone: String) {
-        prefs.edit().putString(KEY_TRIGGER_ZONE, zone).apply()
-    }
-
     fun setSmartKeyboard(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_SMART_KEYBOARD, enabled).apply()
     }
 
-    fun setDelaySeconds(seconds: Int) {
-        prefs.edit().putInt(KEY_DELAY_SECONDS, seconds).apply()
-    }
-
     fun setVibrationPattern(pattern: String) {
         prefs.edit().putString(KEY_VIBRATION_PATTERN, pattern).apply()
-    }
-
-    fun setTapCount(count: Int) {
-        prefs.edit().putInt(KEY_TAP_COUNT, count).apply()
     }
 
     fun setAutoRename(enabled: Boolean) {
@@ -794,41 +596,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
 
     fun setQuickShare(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_QUICK_SHARE, enabled).apply()
-    }
-
-    fun setWatermark(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_WATERMARK, enabled).apply()
-    }
-
-    fun setWatermarkText(text: String) {
-        prefs.edit().putString(KEY_WATERMARK_TEXT, text).apply()
-    }
-
-    /**
-     * Volume Down followed by Volume Up leaves the volume where it started,
-     * so the trigger costs the user nothing and cannot collide with a tap.
-     */
-    override fun onKeyEvent(event: KeyEvent?): Boolean {
-        if (event == null || event.action != KeyEvent.ACTION_DOWN) return false
-        if (!isActive || triggerMode != MODE_VOLUME) return false
-        if (currentForegroundPackage in excludedApps) return false
-
-        val now = System.currentTimeMillis()
-        when (event.keyCode) {
-            KeyEvent.KEYCODE_VOLUME_DOWN -> lastVolumeDownTime = now
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (lastVolumeDownTime != 0L &&
-                    now - lastVolumeDownTime <= VOLUME_COMBO_WINDOW_MS &&
-                    now - lastScreenshotTime > COOLDOWN_MS
-                ) {
-                    lastVolumeDownTime = 0L
-                    lastScreenshotTime = now
-                    takeScreenshot()
-                }
-            }
-            else -> lastVolumeDownTime = 0L
-        }
-        return false
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -857,7 +624,6 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
             } catch (_: Exception) {}
         }
         accessibilityButtonCallback = null
-        sensorManager?.unregisterListener(this)
         unregisterScreenshotObserver()
         quickSharePopup?.dismiss()
         try {

@@ -60,11 +60,6 @@
             android:theme="@style/Theme.DoubleTapScreenshot" />
 
         <activity
-            android:name=".StitchActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DoubleTapScreenshot" />
-
-        <activity
             android:name=".ScreenRecordActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
@@ -94,17 +89,6 @@
             android:name=".OcrActivity"
             android:exported="false"
             android:theme="@style/Theme.DoubleTapScreenshot" />
-
-        <service
-            android:name=".ScreenshotTileService"
-            android:exported="true"
-            android:icon="@drawable/ic_launcher_foreground"
-            android:label="Screenshot"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
-            </intent-filter>
-        </service>
 
         <!-- Fetches the OCR model at install time so text extraction works on first use -->
         <meta-data
