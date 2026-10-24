@@ -29,6 +29,13 @@ jobs:
       - name: Rename APK
         run: cp screenshot-app/app/build/outputs/apk/debug/app-debug.apk DoubleTapScreenshot.apk
 
+      - name: Report APK size
+        id: apk
+        run: |
+          echo "size=$(du -h DoubleTapScreenshot.apk | cut -f1)" >> "$GITHUB_OUTPUT"
+          echo "version=$(grep -oP 'versionName = "\K[^"]+' screenshot-app/app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+          du -h DoubleTapScreenshot.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -39,18 +46,21 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: DoubleTap Screenshot v1.0
+          tag_name: v${{ steps.apk.outputs.version }}.${{ github.run_number }}
+          name: DoubleTap Screenshot v${{ steps.apk.outputs.version }}
           body: |
-            ## DoubleTap Screenshot
+            ## DoubleTap Screenshot v${{ steps.apk.outputs.version }}
 
-            Download the APK file below and install it on your Android phone.
+            Download the APK file below (${{ steps.apk.outputs.size }}) and install it on your Android phone.
 
             ### How to install:
             1. Download `DoubleTapScreenshot.apk` below
             2. Open it on your phone
             3. Tap "Install" (allow "Install from unknown sources" if asked)
             4. Open the app and follow the setup
+
+            If you are updating, turn the accessibility service off and back on
+            afterwards so Android reloads the service configuration.
 
             Requires Android 9 or newer.
           files: DoubleTapScreenshot.apk
