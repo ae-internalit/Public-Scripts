@@ -50,6 +50,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var watermarkTextInput: EditText
     private lateinit var historyButton: Button
     private lateinit var recordButton: Button
+    private lateinit var crashCard: View
+    private lateinit var crashText: TextView
+    private lateinit var crashCopyButton: Button
+    private lateinit var crashClearButton: Button
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST = 1001
@@ -86,6 +90,10 @@ class MainActivity : AppCompatActivity() {
         watermarkTextInput = findViewById(R.id.watermarkTextInput)
         historyButton = findViewById(R.id.historyButton)
         recordButton = findViewById(R.id.recordButton)
+        crashCard = findViewById(R.id.crashCard)
+        crashText = findViewById(R.id.crashText)
+        crashCopyButton = findViewById(R.id.crashCopyButton)
+        crashClearButton = findViewById(R.id.crashClearButton)
 
         if (!hasMediaPermission()) requestMediaPermission()
 
@@ -321,26 +329,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Shown as a card rather than a dialog: a dialog is easy to dismiss by
+     * accident, and the report is then gone for good.
+     */
     private fun showLastCrashIfAny() {
         val prefs = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
         val crash = prefs.getString(ScreenshotService.KEY_LAST_CRASH, null)
-        if (crash.isNullOrEmpty()) return
 
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(R.string.crash_title)
-            .setMessage(crash)
-            .setPositiveButton(R.string.crash_copy) { _, _ ->
-                val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                clipboard.setPrimaryClip(
-                    android.content.ClipData.newPlainText("crash", crash)
-                )
-                prefs.edit().remove(ScreenshotService.KEY_LAST_CRASH).apply()
-                Toast.makeText(this, R.string.crash_copied, Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton(R.string.crash_dismiss) { _, _ ->
-                prefs.edit().remove(ScreenshotService.KEY_LAST_CRASH).apply()
-            }
-            .show()
+        if (crash.isNullOrEmpty()) {
+            crashCard.visibility = View.GONE
+            return
+        }
+
+        crashCard.visibility = View.VISIBLE
+        crashText.text = crash
+
+        crashCopyButton.setOnClickListener {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash))
+            Toast.makeText(this, R.string.crash_copied, Toast.LENGTH_LONG).show()
+        }
+
+        crashClearButton.setOnClickListener {
+            prefs.edit().remove(ScreenshotService.KEY_LAST_CRASH).apply()
+            crashCard.visibility = View.GONE
+        }
     }
 
     override fun onResume() {

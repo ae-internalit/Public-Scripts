@@ -11,8 +11,8 @@ android {
         applicationId = "com.doubletap.screenshot"
         minSdk = 28
         targetSdk = 34
-        versionCode = 12
-        versionName = "6.4"
+        versionCode = 13
+        versionName = "6.5"
     }
 
     buildTypes {
