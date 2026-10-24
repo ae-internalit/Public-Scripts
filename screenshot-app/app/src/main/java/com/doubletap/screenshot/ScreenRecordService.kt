@@ -9,9 +9,6 @@ import android.app.Service
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.hardware.display.DisplayManager
-import android.hardware.display.VirtualDisplay
-import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -24,8 +21,7 @@ import java.io.File
 class ScreenRecordService : Service() {
 
     private var mediaProjection: MediaProjection? = null
-    private var mediaRecorder: MediaRecorder? = null
-    private var virtualDisplay: VirtualDisplay? = null
+    private var recorder: ScreenRecorder? = null
     private var isRecording = false
     private var outputFile: File? = null
 
@@ -126,9 +122,17 @@ class ScreenRecordService : Service() {
             .build()
     }
 
-    private fun audioEnabled(): Boolean =
-        getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
-            .getBoolean(ScreenshotService.KEY_RECORD_AUDIO, true)
+    private fun audioMode(): String {
+        val prefs = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+        val mode = prefs.getString(ScreenshotService.KEY_AUDIO_MODE, ScreenRecorder.AUDIO_DEVICE)
+            ?: ScreenRecorder.AUDIO_DEVICE
+        // Playback capture goes through AudioRecord, so every audio mode needs
+        // RECORD_AUDIO, not just the microphone ones.
+        if (mode != ScreenRecorder.AUDIO_NONE && !hasMicPermission()) {
+            return ScreenRecorder.AUDIO_NONE
+        }
+        return mode
+    }
 
     private fun hasMicPermission(): Boolean =
         checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
@@ -138,61 +142,39 @@ class ScreenRecordService : Service() {
         if (isRecording) return
 
         val metrics = resources.displayMetrics
-        val width = metrics.widthPixels
-        val height = metrics.heightPixels
-        val density = metrics.densityDpi
-
         val file = File(cacheDir, "screen_record_${System.currentTimeMillis()}.mp4")
         outputFile = file
 
-        val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(this)
-        } else {
-            @Suppress("DEPRECATION")
-            MediaRecorder()
-        }
-
-        val withAudio = audioEnabled() && hasMicPermission()
-
         try {
-            // MediaRecorder is a state machine: sources before the format,
-            // encoders after it, or prepare() throws.
-            recorder.apply {
-                if (withAudio) setAudioSource(MediaRecorder.AudioSource.MIC)
-                setVideoSource(MediaRecorder.VideoSource.SURFACE)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                if (withAudio) {
-                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                    setAudioEncodingBitRate(128_000)
-                    setAudioSamplingRate(44_100)
-                }
-                setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-                setVideoSize(width, height)
-                setVideoFrameRate(30)
-                setVideoEncodingBitRate(6_000_000)
-                setOutputFile(file.absolutePath)
-                prepare()
-            }
-            mediaRecorder = recorder
-
             val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            mediaProjection = mgr.getMediaProjection(resultCode, data)
+            val projection = mgr.getMediaProjection(resultCode, data)
+                ?: throw IllegalStateException("No MediaProjection")
+            mediaProjection = projection
 
-            virtualDisplay = mediaProjection?.createVirtualDisplay(
-                "ScreenRecord", width, height, density,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                recorder.surface, null, null
+            val rec = ScreenRecorder(
+                projection = projection,
+                width = metrics.widthPixels,
+                height = metrics.heightPixels,
+                density = metrics.densityDpi,
+                outputPath = file.absolutePath,
+                audioMode = audioMode(),
+                onError = { error -> reportError(error) }
             )
-
-            recorder.start()
+            rec.start()
+            recorder = rec
             isRecording = true
             isRunning = true
         } catch (e: Exception) {
-            android.os.Handler(mainLooper).post {
-                Toast.makeText(this, "Failed to start recording", Toast.LENGTH_SHORT).show()
-            }
+            reportError(e)
             cleanup()
             stopSelf()
+        }
+    }
+
+    private fun reportError(error: Throwable) {
+        ScreenshotService.instance?.recordError("screen recording", error)
+        android.os.Handler(mainLooper).post {
+            Toast.makeText(this, "Recording error: $error", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -205,7 +187,7 @@ class ScreenRecordService : Service() {
         isRunning = false
 
         try {
-            mediaRecorder?.stop()
+            recorder?.stop()
         } catch (_: Exception) {}
 
         cleanup()
@@ -216,11 +198,8 @@ class ScreenRecordService : Service() {
     }
 
     private fun cleanup() {
-        mediaRecorder?.release()
-        mediaRecorder = null
-        virtualDisplay?.release()
-        virtualDisplay = null
-        mediaProjection?.stop()
+        recorder = null
+        try { mediaProjection?.stop() } catch (_: Exception) {}
         mediaProjection = null
     }
 
