@@ -14,6 +14,8 @@ import android.media.MediaMuxer
 import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import java.nio.ByteBuffer
 
 /**
@@ -29,7 +31,8 @@ class ScreenRecorder(
     private val density: Int,
     private val outputPath: String,
     private val audioMode: String,
-    private val onError: (Throwable) -> Unit
+    private val onError: (Throwable) -> Unit,
+    private val onProjectionLost: () -> Unit = {}
 ) {
 
     companion object {
@@ -57,10 +60,12 @@ class ScreenRecorder(
 
     private var deviceRecord: AudioRecord? = null
     private var micRecord: AudioRecord? = null
+    private var projectionCallback: MediaProjection.Callback? = null
 
     private var videoTrack = -1
     private var audioTrack = -1
     private var muxerStarted = false
+    @Volatile private var muxerEverStarted = false
     private val muxerLock = Object()
 
     @Volatile private var running = false
@@ -75,6 +80,16 @@ class ScreenRecorder(
 
     fun start() {
         muxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+
+        // Required from API 34: createVirtualDisplay throws without a callback
+        // registered first. onStop also fires when the user revokes capture
+        // from the system UI, which must tear the recording down.
+        projectionCallback = object : MediaProjection.Callback() {
+            override fun onStop() {
+                onProjectionLost()
+            }
+        }
+        projectionCallback?.let { projection.registerCallback(it, Handler(Looper.getMainLooper())) }
 
         startVideo()
         if (hasAudio) startAudio()
@@ -189,6 +204,7 @@ class ScreenRecorder(
             if (hasAudio && audioTrack < 0) return
             muxer?.start()
             muxerStarted = true
+            muxerEverStarted = true
             muxerLock.notifyAll()
         }
     }
@@ -208,6 +224,9 @@ class ScreenRecorder(
                     }
                     index >= 0 -> {
                         writeSample(encoder, index, info, videoTrack)
+                        // Set by signalEndOfInputStream in stop(); everything
+                        // the encoder held has now been muxed.
+                        if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) return
                     }
                 }
             }
@@ -318,9 +337,13 @@ class ScreenRecorder(
     }
 
     fun stop() {
-        running = false
+        // Flush the encoder before tearing anything down: `running` stays true
+        // so the video drain keeps going until it sees end-of-stream, which is
+        // what finalises the trailing frames and the file's moov atom.
+        try { videoEncoder?.signalEndOfInputStream() } catch (_: Exception) {}
+        try { videoThread?.join(3000) } catch (_: InterruptedException) {}
 
-        try { videoThread?.join(2000) } catch (_: InterruptedException) {}
+        running = false
         try { audioThread?.join(2000) } catch (_: InterruptedException) {}
 
         try { deviceRecord?.stop() } catch (_: Exception) {}
@@ -350,6 +373,14 @@ class ScreenRecorder(
             muxerStarted = false
         }
 
+        projectionCallback?.let {
+            try { projection.unregisterCallback(it) } catch (_: Exception) {}
+        }
+        projectionCallback = null
+
         try { projection.stop() } catch (_: Exception) {}
     }
+
+    /** True when the muxer actually received data; an empty file is not a recording. */
+    fun producedOutput(): Boolean = muxerEverStarted
 }
