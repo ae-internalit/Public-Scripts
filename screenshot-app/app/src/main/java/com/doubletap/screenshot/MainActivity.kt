@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tapCountLabel: TextView
     private lateinit var autoRenameSwitch: SwitchCompat
     private lateinit var quickShareSwitch: SwitchCompat
+    private lateinit var recordAudioSwitch: SwitchCompat
     private lateinit var watermarkSwitch: SwitchCompat
     private lateinit var watermarkTextInput: EditText
     private lateinit var historyButton: Button
@@ -57,6 +58,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST = 1001
+        private const val AUDIO_PERMISSION_REQUEST = 1002
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,6 +88,7 @@ class MainActivity : AppCompatActivity() {
         tapCountLabel = findViewById(R.id.tapCountLabel)
         autoRenameSwitch = findViewById(R.id.autoRenameSwitch)
         quickShareSwitch = findViewById(R.id.quickShareSwitch)
+        recordAudioSwitch = findViewById(R.id.recordAudioSwitch)
         watermarkSwitch = findViewById(R.id.watermarkSwitch)
         watermarkTextInput = findViewById(R.id.watermarkTextInput)
         historyButton = findViewById(R.id.historyButton)
@@ -194,6 +197,21 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(ScreenshotService.KEY_SMART_KEYBOARD, isChecked)
                 .apply()
             ScreenshotService.instance?.setSmartKeyboard(isChecked)
+        }
+
+        recordAudioSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.RECORD_AUDIO
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this, arrayOf(Manifest.permission.RECORD_AUDIO), AUDIO_PERMISSION_REQUEST
+                )
+            }
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(ScreenshotService.KEY_RECORD_AUDIO, isChecked)
+                .apply()
         }
 
         quickShareSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -326,6 +344,11 @@ class MainActivity : AppCompatActivity() {
             if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, R.string.location_permission_needed, Toast.LENGTH_SHORT).show()
             }
+        } else if (requestCode == AUDIO_PERMISSION_REQUEST) {
+            if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                recordAudioSwitch.isChecked = false
+                Toast.makeText(this, R.string.record_audio_needed, Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -418,6 +441,12 @@ class MainActivity : AppCompatActivity() {
 
         val quickShare = prefs.getBoolean(ScreenshotService.KEY_QUICK_SHARE, true)
         quickShareSwitch.isChecked = quickShare
+
+        recordAudioSwitch.isChecked =
+            prefs.getBoolean(ScreenshotService.KEY_RECORD_AUDIO, true) &&
+                    ContextCompat.checkSelfPermission(
+                        this, Manifest.permission.RECORD_AUDIO
+                    ) == PackageManager.PERMISSION_GRANTED
 
         val autoRename = prefs.getBoolean(ScreenshotService.KEY_AUTO_RENAME, false)
         autoRenameSwitch.isChecked = autoRename

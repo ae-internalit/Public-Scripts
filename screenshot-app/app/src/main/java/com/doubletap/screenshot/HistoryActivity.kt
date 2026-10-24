@@ -155,11 +155,7 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     private fun extractText(uri: Uri) {
-        val intent = Intent(this, BlurEditorActivity::class.java).apply {
-            data = uri
-            putExtra(BlurEditorActivity.EXTRA_RUN_OCR, true)
-        }
-        startActivity(intent)
+        OcrActivity.start(this, uri)
     }
 
     private fun editScreenshot(uri: Uri) {

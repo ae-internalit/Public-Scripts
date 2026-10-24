@@ -154,6 +154,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
         const val KEY_WATERMARK = "watermark_enabled"
         const val KEY_WATERMARK_TEXT = "watermark_text"
         const val KEY_LAST_CRASH = "last_crash"
+        const val KEY_RECORD_AUDIO = "record_audio"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
         private const val MIN_TAP_GAP = 40L
         private const val SWIPE_VELOCITY_THRESHOLD = 0.8f
