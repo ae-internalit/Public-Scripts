@@ -209,7 +209,10 @@ class ScreenRecordService : Service() {
                 density = metrics.densityDpi,
                 outputPath = file.absolutePath,
                 audioMode = mode,
-                onError = { error -> reportError(error) }
+                onError = { error -> reportError(error) },
+                onProjectionLost = {
+                    if (isRecording) stopRecording()
+                }
             )
             rec.start()
             recorder = rec
@@ -237,12 +240,25 @@ class ScreenRecordService : Service() {
         isRecording = false
         isRunning = false
 
-        try {
+        val produced = try {
             recorder?.stop()
-        } catch (_: Exception) {}
+            recorder?.producedOutput() ?: false
+        } catch (e: Exception) {
+            reportError(e)
+            false
+        }
 
         cleanup()
-        saveToGallery()
+
+        if (produced) {
+            saveToGallery()
+        } else {
+            // An empty file is not a recording; say so rather than failing silently.
+            outputFile?.delete()
+            android.os.Handler(mainLooper).post {
+                Toast.makeText(this, R.string.record_nothing_captured, Toast.LENGTH_LONG).show()
+            }
+        }
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

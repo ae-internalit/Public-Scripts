@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.WindowManager
@@ -35,7 +36,9 @@ class QuickSharePopup(private val context: Context) {
                     unregisterObserver()
                     findLatestScreenshot()?.let { screenshotUri ->
                         latestScreenshotUri = screenshotUri
-                        handler.post { showPopup() }
+                        // The posted runnable runs outside this try, so it
+                        // guards itself.
+                        handler.post { showPopupSafely() }
                     }
                 } catch (_: Exception) {
                 }
@@ -74,6 +77,15 @@ class QuickSharePopup(private val context: Context) {
         return null
     }
 
+    private fun showPopupSafely() {
+        try {
+            showPopup()
+        } catch (e: Exception) {
+            popupView = null
+            ScreenshotService.instance?.recordError("quick share popup", e)
+        }
+    }
+
     private fun showPopup() {
         // Re-entrant: the observer can deliver several onChange callbacks for a
         // single capture, and a second addView would leak the first overlay.
@@ -81,7 +93,13 @@ class QuickSharePopup(private val context: Context) {
 
         windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        val inflater = LayoutInflater.from(context)
+        // A Service does not inherit the application's theme; it resolves
+        // against the bare platform default, where AppCompat attributes such as
+        // selectableItemBackgroundBorderless do not exist. Inflating without
+        // this wrapper throws InvocationTargetException from the view
+        // constructor.
+        val themed = ContextThemeWrapper(context, R.style.Theme_DoubleTapScreenshot)
+        val inflater = LayoutInflater.from(themed)
         val view = inflater.inflate(R.layout.popup_quick_share, null) as LinearLayout
         popupView = view
 
