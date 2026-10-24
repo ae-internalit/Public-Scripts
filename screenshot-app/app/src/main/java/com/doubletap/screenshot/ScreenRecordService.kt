@@ -126,6 +126,14 @@ class ScreenRecordService : Service() {
             .build()
     }
 
+    private fun audioEnabled(): Boolean =
+        getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+            .getBoolean(ScreenshotService.KEY_RECORD_AUDIO, true)
+
+    private fun hasMicPermission(): Boolean =
+        checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+
     private fun startRecording(resultCode: Int, data: Intent) {
         if (isRecording) return
 
@@ -144,10 +152,20 @@ class ScreenRecordService : Service() {
             MediaRecorder()
         }
 
+        val withAudio = audioEnabled() && hasMicPermission()
+
         try {
+            // MediaRecorder is a state machine: sources before the format,
+            // encoders after it, or prepare() throws.
             recorder.apply {
+                if (withAudio) setAudioSource(MediaRecorder.AudioSource.MIC)
                 setVideoSource(MediaRecorder.VideoSource.SURFACE)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                if (withAudio) {
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setAudioEncodingBitRate(128_000)
+                    setAudioSamplingRate(44_100)
+                }
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
                 setVideoSize(width, height)
                 setVideoFrameRate(30)

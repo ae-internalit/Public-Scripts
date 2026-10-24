@@ -140,6 +140,11 @@
     <string name="watermark_text_label">Watermark Text</string>
 
     <!-- OCR -->
+    <string name="ocr_working">Reading text…</string>
+    <string name="ocr_tap_hint">Tap the lines you want, then Copy.</string>
+    <string name="ocr_select_all">Select All</string>
+    <string name="ocr_select_none">Clear</string>
+
     <string name="ocr_result_title">Extracted Text</string>
     <string name="ocr_copy">Copy</string>
     <string name="ocr_copied">Text copied to clipboard</string>
@@ -162,4 +167,12 @@
     <string name="record_start">Start Recording</string>
     <string name="record_stop">Stop Recording</string>
     <string name="record_desc">Record your screen — tap to start, notification to stop</string>
+    <string name="record_audio_title">Record Microphone Audio</string>
+    <string name="record_audio_desc">Capture sound from the microphone while recording. Android does not let an app record the audio playing inside other apps, so game and video sound is only picked up through the mic when the speaker is on.</string>
+    <string name="record_audio_needed">Microphone permission is needed to record audio</string>
+
+    <plurals name="ocr_selected">
+        <item quantity="one">%d line selected</item>
+        <item quantity="other">%d lines selected</item>
+    </plurals>
 </resources>

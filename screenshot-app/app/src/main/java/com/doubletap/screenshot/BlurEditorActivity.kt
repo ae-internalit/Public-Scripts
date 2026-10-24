@@ -28,10 +28,6 @@ import java.io.IOException
 
 class BlurEditorActivity : AppCompatActivity() {
 
-    companion object {
-        const val EXTRA_RUN_OCR = "run_ocr"
-    }
-
     private lateinit var imageView: ImageView
     private lateinit var drawingOverlay: BlurOverlayView
     private lateinit var toolIndicator: TextView
@@ -61,8 +57,6 @@ class BlurEditorActivity : AppCompatActivity() {
         sourceUri = intent.data
         sourceUri?.let { loadImage(it) }
 
-        if (intent.getBooleanExtra(EXTRA_RUN_OCR, false)) extractText()
-
         saveBtn.setOnClickListener { saveImage(share = false) }
         shareBtn.setOnClickListener { saveImage(share = true) }
         cancelBtn.setOnClickListener { finish() }
@@ -74,7 +68,7 @@ class BlurEditorActivity : AppCompatActivity() {
         btnCrop.setOnClickListener { setTool(BlurOverlayView.Mode.CROP) }
         btnWatermark.setOnClickListener { promptWatermark() }
         btnUndo.setOnClickListener { drawingOverlay.undo() }
-        btnOcr.setOnClickListener { extractText() }
+        btnOcr.setOnClickListener { sourceUri?.let { uri -> OcrActivity.start(this, uri) } }
     }
 
     private fun setTool(mode: BlurOverlayView.Mode) {
@@ -119,38 +113,6 @@ class BlurEditorActivity : AppCompatActivity() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
-    }
-
-    private fun extractText() {
-        val bitmap = originalBitmap ?: return
-        try {
-            val inputImage = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
-            val recognizer = com.google.mlkit.vision.text.TextRecognition.getClient(
-                com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS
-            )
-            recognizer.process(inputImage)
-                .addOnSuccessListener { text ->
-                    if (text.text.isNotEmpty()) {
-                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("OCR", text.text))
-                        AlertDialog.Builder(this)
-                            .setTitle(R.string.ocr_result_title)
-                            .setMessage(text.text)
-                            .setPositiveButton(R.string.ocr_copy) { _, _ ->
-                                Toast.makeText(this, R.string.ocr_copied, Toast.LENGTH_SHORT).show()
-                            }
-                            .setNegativeButton(android.R.string.cancel, null)
-                            .show()
-                    } else {
-                        Toast.makeText(this, R.string.ocr_no_text, Toast.LENGTH_SHORT).show()
-                    }
-                }
-                .addOnFailureListener {
-                    Toast.makeText(this, R.string.ocr_failed, Toast.LENGTH_SHORT).show()
-                }
-        } catch (e: Exception) {
-            Toast.makeText(this, R.string.ocr_failed, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun loadImage(uri: Uri) {

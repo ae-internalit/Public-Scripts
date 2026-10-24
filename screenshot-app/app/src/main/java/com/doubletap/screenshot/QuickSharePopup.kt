@@ -107,7 +107,7 @@ class QuickSharePopup(private val context: Context) {
         }
 
         view.findViewById<ImageButton>(R.id.btnOcr).setOnClickListener {
-            latestScreenshotUri?.let { uri -> extractText(uri) }
+            latestScreenshotUri?.let { uri -> OcrActivity.start(context, uri) }
             dismiss()
         }
 
@@ -150,37 +150,6 @@ class QuickSharePopup(private val context: Context) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
-    }
-
-    private fun extractText(uri: Uri) {
-        try {
-            val bitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream)
-            } ?: return
-
-            val inputImage = com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap, 0)
-            val recognizer = com.google.mlkit.vision.text.TextRecognition.getClient(
-                com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS
-            )
-
-            recognizer.process(inputImage)
-                .addOnSuccessListener { text ->
-                    bitmap.recycle()
-                    if (text.text.isNotEmpty()) {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("OCR", text.text))
-                        Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "No text found", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                .addOnFailureListener {
-                    bitmap.recycle()
-                    Toast.makeText(context, "OCR failed", Toast.LENGTH_SHORT).show()
-                }
-        } catch (_: Exception) {
-            Toast.makeText(context, "OCR failed", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun deleteScreenshot(uri: Uri) {
