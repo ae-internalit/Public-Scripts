@@ -9,6 +9,8 @@ import android.app.Service
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import androidx.core.app.ServiceCompat
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -74,8 +76,12 @@ class ScreenRecordService : Service() {
                     intent.getParcelableExtra(EXTRA_DATA)
                 }
                 if (resultCode == Activity.RESULT_OK && data != null) {
-                    startForeground(NOTIFICATION_ID, buildNotification(true))
-                    startRecording(resultCode, data)
+                    val mode = enterForeground()
+                    if (mode != null) {
+                        startRecording(resultCode, data, mode)
+                    } else {
+                        stopSelf()
+                    }
                 } else {
                     stopSelf()
                 }
@@ -137,11 +143,53 @@ class ScreenRecordService : Service() {
         return mode
     }
 
+    /**
+     * Android 14 validates every foreground-service type named here, so asking
+     * for `microphone` without RECORD_AUDIO rejects the whole service rather
+     * than just the audio. Request the microphone type only when audio will
+     * actually be captured, and drop to silent video if it is refused anyway.
+     *
+     * Returns the audio mode the recording should use, or null if the service
+     * could not enter the foreground at all.
+     */
+    private fun enterForeground(): String? {
+        val mode = audioMode()
+
+        if (tryForeground(mode)) return mode
+        if (mode == ScreenRecorder.AUDIO_NONE) return null
+
+        // Audio was refused at the service level; silent video still beats nothing.
+        return if (tryForeground(ScreenRecorder.AUDIO_NONE)) {
+            android.os.Handler(mainLooper).post {
+                Toast.makeText(this, R.string.record_audio_refused, Toast.LENGTH_LONG).show()
+            }
+            ScreenRecorder.AUDIO_NONE
+        } else {
+            null
+        }
+    }
+
+    private fun tryForeground(mode: String): Boolean {
+        val types = if (mode == ScreenRecorder.AUDIO_NONE) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+        } else {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        }
+        return try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(true), types)
+            true
+        } catch (e: Exception) {
+            reportError(e)
+            false
+        }
+    }
+
     private fun hasMicPermission(): Boolean =
         checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
 
-    private fun startRecording(resultCode: Int, data: Intent) {
+    private fun startRecording(resultCode: Int, data: Intent, mode: String) {
         if (isRecording) return
 
         val metrics = resources.displayMetrics
@@ -160,7 +208,7 @@ class ScreenRecordService : Service() {
                 height = metrics.heightPixels,
                 density = metrics.densityDpi,
                 outputPath = file.absolutePath,
-                audioMode = audioMode(),
+                audioMode = mode,
                 onError = { error -> reportError(error) }
             )
             rec.start()
