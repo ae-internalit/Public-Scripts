@@ -415,6 +415,7 @@ class ScreenshotService : AccessibilityService(), SensorEventListener {
     fun recordError(where: String, error: Throwable) {
         try {
             val text = buildString {
+                append(errorHeader(this@ScreenshotService))
                 append("Non-fatal in ").append(where).append('\n')
                 append(error.toString()).append('\n')
                 error.stackTrace.take(10).forEach { append("  at ").append(it).append('\n') }
