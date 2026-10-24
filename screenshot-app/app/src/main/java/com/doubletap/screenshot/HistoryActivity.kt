@@ -32,9 +32,11 @@ class HistoryActivity : AppCompatActivity() {
         backBtn.setOnClickListener { finish() }
         stitchBtn.setOnClickListener { openStitch() }
 
+        // A tap shows what this app can do with the screenshot. Handing it
+        // straight to an external viewer hid every feature behind a long-press.
         adapter = HistoryAdapter(screenshots, object : HistoryAdapter.OnItemClickListener {
             override fun onClick(item: ScreenshotItem) {
-                viewScreenshot(item.uri)
+                showOptions(item)
             }
 
             override fun onLongClick(item: ScreenshotItem) {
@@ -122,15 +124,22 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     private fun showOptions(item: ScreenshotItem) {
-        val options = arrayOf("Copy Text (OCR)", "Share", "Edit", "Delete")
+        val options = arrayOf(
+            "Copy Text (OCR)",
+            "Edit — blur, draw, crop",
+            "Share",
+            "Open in photo viewer",
+            "Delete"
+        )
         AlertDialog.Builder(this)
             .setTitle(item.name)
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> extractText(item.uri)
-                    1 -> shareScreenshot(item.uri)
-                    2 -> editScreenshot(item.uri)
-                    3 -> deleteScreenshot(item)
+                    1 -> editScreenshot(item.uri)
+                    2 -> shareScreenshot(item.uri)
+                    3 -> viewScreenshot(item.uri)
+                    4 -> deleteScreenshot(item)
                 }
             }
             .show()
