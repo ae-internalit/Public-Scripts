@@ -48,7 +48,28 @@ class HistoryActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        loadScreenshots()
+        if (hasMediaPermission()) {
+            loadScreenshots()
+        } else {
+            requestMediaPermission()
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == MEDIA_PERMISSION_REQUEST) {
+            if (grantResults.isNotEmpty() &&
+                grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                loadScreenshots()
+            } else {
+                emptyText.setText(R.string.history_needs_permission)
+                emptyText.visibility = View.VISIBLE
+                recyclerView.visibility = View.GONE
+            }
+        }
     }
 
     private fun loadScreenshots() {
@@ -101,14 +122,15 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     private fun showOptions(item: ScreenshotItem) {
-        val options = arrayOf("Share", "Edit", "Delete")
+        val options = arrayOf("Copy Text (OCR)", "Share", "Edit", "Delete")
         AlertDialog.Builder(this)
             .setTitle(item.name)
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> shareScreenshot(item.uri)
-                    1 -> editScreenshot(item.uri)
-                    2 -> deleteScreenshot(item)
+                    0 -> extractText(item.uri)
+                    1 -> shareScreenshot(item.uri)
+                    2 -> editScreenshot(item.uri)
+                    3 -> deleteScreenshot(item)
                 }
             }
             .show()
@@ -121,6 +143,14 @@ class HistoryActivity : AppCompatActivity() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startActivity(Intent.createChooser(intent, "Share"))
+    }
+
+    private fun extractText(uri: Uri) {
+        val intent = Intent(this, BlurEditorActivity::class.java).apply {
+            data = uri
+            putExtra(BlurEditorActivity.EXTRA_RUN_OCR, true)
+        }
+        startActivity(intent)
     }
 
     private fun editScreenshot(uri: Uri) {
@@ -156,3 +186,22 @@ data class ScreenshotItem(
     val date: Long,
     val uri: Uri
 )
+
+const val MEDIA_PERMISSION_REQUEST = 2001
+
+fun mediaPermission(): String =
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        android.Manifest.permission.READ_MEDIA_IMAGES
+    } else {
+        android.Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+
+fun android.app.Activity.hasMediaPermission(): Boolean =
+    androidx.core.content.ContextCompat.checkSelfPermission(this, mediaPermission()) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+
+fun android.app.Activity.requestMediaPermission() {
+    androidx.core.app.ActivityCompat.requestPermissions(
+        this, arrayOf(mediaPermission()), MEDIA_PERMISSION_REQUEST
+    )
+}
