@@ -129,6 +129,9 @@ class ScreenRecordService : Service() {
         // Playback capture goes through AudioRecord, so every audio mode needs
         // RECORD_AUDIO, not just the microphone ones.
         if (mode != ScreenRecorder.AUDIO_NONE && !hasMicPermission()) {
+            android.os.Handler(mainLooper).post {
+                Toast.makeText(this, R.string.record_audio_needed, Toast.LENGTH_LONG).show()
+            }
             return ScreenRecorder.AUDIO_NONE
         }
         return mode

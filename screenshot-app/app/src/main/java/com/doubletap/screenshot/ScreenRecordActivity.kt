@@ -1,12 +1,17 @@
 package com.doubletap.screenshot
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 
-class ScreenRecordActivity : AppCompatActivity() {
+/**
+ * A transparent shim that only asks for MediaProjection consent. It must not
+ * extend AppCompatActivity: its translucent theme is a framework theme, and
+ * AppCompat throws at startup unless given a Theme.AppCompat descendant.
+ */
+class ScreenRecordActivity : Activity() {
 
     companion object {
         private const val REQUEST_CODE = 1000
