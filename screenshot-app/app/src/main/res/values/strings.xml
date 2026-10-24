@@ -175,6 +175,7 @@
     <string name="record_audio_none">No audio</string>
     <string name="record_audio_needed">Microphone permission is needed for this option</string>
     <string name="record_audio_unsupported">Device audio needs Android 10 or newer</string>
+    <string name="record_audio_refused">Android refused audio capture — recording video only</string>
 
     <plurals name="ocr_selected">
         <item quantity="one">%d line selected</item>

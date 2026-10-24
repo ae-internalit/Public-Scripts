@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val LOCATION_PERMISSION_REQUEST = 1001
         private const val AUDIO_PERMISSION_REQUEST = 1002
+        private const val STARTUP_PERMISSION_REQUEST = 1003
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,7 +99,7 @@ class MainActivity : AppCompatActivity() {
         crashCopyButton = findViewById(R.id.crashCopyButton)
         crashClearButton = findViewById(R.id.crashClearButton)
 
-        if (!hasMediaPermission()) requestMediaPermission()
+        requestStartupPermissions()
 
         findViewById<Button>(R.id.quickTapButton).setOnClickListener {
             // No public Settings action targets Quick Tap directly, so land the
@@ -337,6 +338,34 @@ class MainActivity : AppCompatActivity() {
         AppCompatDelegate.setDefaultNightMode(mode)
     }
 
+    /**
+     * Asked together in one prompt. Recording needs RECORD_AUDIO even for
+     * device audio, and without it Android refuses to start the recording
+     * service at all rather than merely dropping the sound.
+     */
+    private fun requestStartupPermissions() {
+        val needed = mutableListOf<String>()
+
+        if (!hasMediaPermission()) needed += mediaPermission()
+
+        val audioMode = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+            .getString(ScreenshotService.KEY_AUDIO_MODE, ScreenRecorder.AUDIO_DEVICE)
+            ?: ScreenRecorder.AUDIO_DEVICE
+        if (audioMode != ScreenRecorder.AUDIO_NONE &&
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            needed += Manifest.permission.RECORD_AUDIO
+        }
+
+        if (needed.isNotEmpty()) {
+            ActivityCompat.requestPermissions(
+                this, needed.toTypedArray(), STARTUP_PERMISSION_REQUEST
+            )
+        }
+    }
+
     private fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_COARSE_LOCATION
@@ -359,6 +388,8 @@ class MainActivity : AppCompatActivity() {
             if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, R.string.location_permission_needed, Toast.LENGTH_SHORT).show()
             }
+        } else if (requestCode == STARTUP_PERMISSION_REQUEST) {
+            loadSettings()
         } else if (requestCode == AUDIO_PERMISSION_REQUEST) {
             if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 findViewById<RadioButton>(R.id.audioNone).isChecked = true
