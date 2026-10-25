@@ -53,8 +53,8 @@ class HistoryAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = items[position]
 
-        holder.thumbnail.setImageURI(item.uri)
         holder.thumbnail.scaleType = ImageView.ScaleType.CENTER_CROP
+        ThumbnailLoader.load(holder.thumbnail, item.id, item.uri)
 
         val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
         holder.dateText.text = dateFormat.format(Date(item.date * 1000))

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Holds which screenshot a recycled grid cell is currently showing, so a
+         slow thumbnail cannot land on a view that has moved on. -->
+    <item name="thumbnail_id" type="id" />
+</resources>

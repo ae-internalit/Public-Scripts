@@ -54,10 +54,25 @@
             android:exported="false"
             android:theme="@style/Theme.DoubleTapScreenshot" />
 
+        <!-- Exported so the editor shows up under Edit and Share in any photo
+             app. It reads only the uri it is handed, under the grant the
+             sender attaches, and writes its result as a new file. -->
         <activity
             android:name=".BlurEditorActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DoubleTapScreenshot" />
+            android:exported="true"
+            android:label="@string/editor_chooser_label"
+            android:theme="@style/Theme.DoubleTapScreenshot">
+            <intent-filter>
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".HistoryActivity"

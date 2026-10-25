@@ -5,7 +5,6 @@ import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -24,7 +23,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import java.io.IOException
+import androidx.core.content.IntentCompat
 
 class BlurEditorActivity : AppCompatActivity() {
 
@@ -54,8 +53,18 @@ class BlurEditorActivity : AppCompatActivity() {
         val btnUndo = findViewById<ImageButton>(R.id.btnToolUndo)
         val btnOcr = findViewById<ImageButton>(R.id.btnToolOcr)
 
-        sourceUri = intent.data
-        sourceUri?.let { loadImage(it) }
+        // intent.data when the gallery opens the editor, EXTRA_STREAM when
+        // another app shares a photo into it.
+        val incoming = intent.data ?: IntentCompat.getParcelableExtra(
+            intent, Intent.EXTRA_STREAM, Uri::class.java
+        )
+        if (incoming == null) {
+            Toast.makeText(this, R.string.editor_no_image, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+        sourceUri = incoming
+        loadImage(incoming)
 
         saveBtn.setOnClickListener { saveImage(share = false) }
         shareBtn.setOnClickListener { saveImage(share = true) }
@@ -116,20 +125,31 @@ class BlurEditorActivity : AppCompatActivity() {
     }
 
     private fun loadImage(uri: Uri) {
-        try {
-            contentResolver.openInputStream(uri)?.use { stream ->
-                originalBitmap = BitmapFactory.decodeStream(stream)
-                imageView.setImageBitmap(originalBitmap)
-                drawingOverlay.post {
-                    drawingOverlay.setImageDimensions(
-                        imageView.width, imageView.height,
-                        originalBitmap?.width ?: 0, originalBitmap?.height ?: 0
-                    )
-                }
-            }
-        } catch (_: IOException) {
-            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
+        // Sub-sampled: saveImage() holds a second full copy of this bitmap
+        // while it draws, and a 50MP camera photo is 200MB before the copy.
+        // Screenshots are far below the cap and come through untouched.
+        val bitmap = try {
+            BitmapLoader.decode(this, uri, BitmapLoader.EDIT_PIXELS)
+        } catch (e: Exception) {
+            ScreenshotService.instance?.recordError("editor load", e)
+            null
+        } catch (e: OutOfMemoryError) {
+            ScreenshotService.instance?.recordError("editor load", e)
+            null
+        }
+
+        if (bitmap == null) {
+            Toast.makeText(this, R.string.editor_load_failed, Toast.LENGTH_LONG).show()
             finish()
+            return
+        }
+
+        originalBitmap = bitmap
+        imageView.setImageBitmap(bitmap)
+        drawingOverlay.post {
+            drawingOverlay.setImageDimensions(
+                imageView.width, imageView.height, bitmap.width, bitmap.height
+            )
         }
     }
 
@@ -331,20 +351,59 @@ class BlurEditorActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Now that any photo can reach the editor, the result should land where its
+     * source came from: an edited screenshot stays with the screenshots, an
+     * edited photo does not. PNG keeps screenshot text crisp, but a 12MP photo
+     * as PNG is tens of megabytes and slow to write, so photos go out as JPEG.
+     */
     private fun saveBitmapToGallery(bitmap: Bitmap): Uri? {
+        val screenshot = sourceIsScreenshot()
+        val stamp = System.currentTimeMillis()
+
         val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "Screenshot_edited_${System.currentTimeMillis()}")
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Screenshots")
+            if (screenshot) {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "Screenshot_edited_$stamp")
+                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(
+                    MediaStore.Images.Media.RELATIVE_PATH,
+                    Environment.DIRECTORY_PICTURES + "/Screenshots"
+                )
+            } else {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "Edited_$stamp")
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(
+                    MediaStore.Images.Media.RELATIVE_PATH,
+                    Environment.DIRECTORY_PICTURES + "/DoubleTap"
+                )
+            }
         }
 
         val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
         uri?.let {
             contentResolver.openOutputStream(it)?.use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                if (screenshot) {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                } else {
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                }
             }
         }
         return uri
+    }
+
+    private fun sourceIsScreenshot(): Boolean {
+        val uri = sourceUri ?: return false
+        return try {
+            contentResolver.query(
+                uri, arrayOf(MediaStore.Images.Media.DISPLAY_NAME), null, null, null
+            )?.use { cursor ->
+                cursor.moveToFirst() &&
+                    cursor.getString(0).orEmpty().contains("screenshot", ignoreCase = true)
+            } ?: false
+        } catch (_: Exception) {
+            false
+        }
     }
 }
 
