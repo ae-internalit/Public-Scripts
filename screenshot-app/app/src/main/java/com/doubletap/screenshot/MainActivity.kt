@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var themeGroup: RadioGroup
     private lateinit var autoRenameSwitch: SwitchCompat
     private lateinit var quickShareSwitch: SwitchCompat
+    private lateinit var bubbleSwitch: SwitchCompat
     private lateinit var audioGroup: RadioGroup
     private lateinit var historyButton: Button
     private lateinit var recordButton: Button
@@ -69,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         themeGroup = findViewById(R.id.themeGroup)
         autoRenameSwitch = findViewById(R.id.autoRenameSwitch)
         quickShareSwitch = findViewById(R.id.quickShareSwitch)
+        bubbleSwitch = findViewById(R.id.bubbleSwitch)
         audioGroup = findViewById(R.id.audioGroup)
         historyButton = findViewById(R.id.historyButton)
         recordButton = findViewById(R.id.recordButton)
@@ -183,6 +185,14 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(ScreenshotService.KEY_QUICK_SHARE, isChecked)
                 .apply()
             ScreenshotService.instance?.setQuickShare(isChecked)
+        }
+
+        bubbleSwitch.setOnCheckedChangeListener { _, isChecked ->
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(ScreenshotService.KEY_FLOATING_BUBBLE, isChecked)
+                .apply()
+            ScreenshotService.instance?.setFloatingBubble(isChecked)
         }
 
         autoRenameSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -367,6 +377,9 @@ class MainActivity : AppCompatActivity() {
 
         val quickShare = prefs.getBoolean(ScreenshotService.KEY_QUICK_SHARE, true)
         quickShareSwitch.isChecked = quickShare
+
+        bubbleSwitch.isChecked =
+            prefs.getBoolean(ScreenshotService.KEY_FLOATING_BUBBLE, false)
 
         val audioMode = prefs.getString(
             ScreenshotService.KEY_AUDIO_MODE, ScreenRecorder.AUDIO_DEVICE

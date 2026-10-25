@@ -41,6 +41,7 @@ class ScreenshotService : AccessibilityService() {
 
     private var touchWindow: View? = null
     private var windowManager: WindowManager? = null
+    private var floatingBubble: FloatingBubble? = null
     private var lastTouchTime = 0L
     private var lastTouchX = 0f
     private var lastTouchY = 0f
@@ -108,6 +109,7 @@ class ScreenshotService : AccessibilityService() {
         const val KEY_VIBRATION_PATTERN = "vibration_pattern"
         const val KEY_AUTO_RENAME = "auto_rename"
         const val KEY_QUICK_SHARE = "quick_share"
+        const val KEY_FLOATING_BUBBLE = "floating_bubble"
         const val KEY_THEME = "theme_mode"
         const val KEY_LAST_CRASH = "last_crash"
         const val KEY_LAST_CRASH_VERSION = "last_crash_version"
@@ -117,6 +119,15 @@ class ScreenshotService : AccessibilityService() {
 
         /** Long enough for the notification shade to close and the app to redraw. */
         private const val SHADE_CLOSE_MS = 600L
+
+        /** One frame for the bubble to leave the display before the capture. */
+        private const val BUBBLE_HIDE_MS = 120L
+
+        /** Long enough that the bubble is not back inside the shot. */
+        private const val BUBBLE_RESTORE_MS = 700L
+
+        /** Time for the consent prompt to be answered before checking state. */
+        private const val RECORD_START_MS = 1500L
         private const val MIN_TAP_GAP = 40L
         private const val SWIPE_VELOCITY_THRESHOLD = 0.8f
         private const val COOLDOWN_MS = 2000L
@@ -143,6 +154,7 @@ class ScreenshotService : AccessibilityService() {
         registerScreenshotReceiver()
         createTouchDetector()
         setupAccessibilityButton()
+        applyBubbleSetting()
     }
 
     /**
@@ -510,6 +522,22 @@ class ScreenshotService : AccessibilityService() {
             }
         }
 
+        // The bubble is a real window on the display, so it lands in the
+        // capture like anything else. One frame is enough for it to go; the
+        // delay is imperceptible next to the capture itself.
+        val bubble = floatingBubble
+        if (bubble != null && bubble.isShowing) {
+            bubble.hideForCapture()
+            handler.postDelayed({
+                captureNow(shouldRename)
+                handler.postDelayed({ bubble.showAfterCapture() }, BUBBLE_RESTORE_MS)
+            }, BUBBLE_HIDE_MS)
+        } else {
+            captureNow(shouldRename)
+        }
+    }
+
+    private fun captureNow(shouldRename: Boolean) {
         val success = performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
         if (success) {
             vibrate()
@@ -518,6 +546,53 @@ class ScreenshotService : AccessibilityService() {
             quickSharePopup?.dismiss()
             Toast.makeText(this, R.string.screenshot_failed, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /**
+     * Tap takes a screenshot; hold starts or stops a recording. Android forces
+     * a consent prompt before every recording, so the hold cannot also end it:
+     * the finger has to leave the bubble to answer the prompt. The bubble turns
+     * red instead and a tap ends it.
+     */
+    fun applyBubbleSetting() {
+        val wanted = prefs.getBoolean(KEY_FLOATING_BUBBLE, false)
+
+        if (!wanted) {
+            floatingBubble?.hide()
+            floatingBubble = null
+            return
+        }
+        if (floatingBubble != null) return
+
+        val bubble = FloatingBubble(
+            context = this,
+            onTap = {
+                if (ScreenRecordService.isRunning) {
+                    ScreenRecordService.stop(this)
+                    floatingBubble?.setRecording(false)
+                } else {
+                    performScreenshotNow()
+                }
+            },
+            onHold = {
+                if (!ScreenRecordService.isRunning) {
+                    vibrate()
+                    ScreenRecordActivity.start(this)
+                    // The prompt decides whether this actually starts, so the
+                    // red state waits until the service says it is running.
+                    handler.postDelayed({
+                        floatingBubble?.setRecording(ScreenRecordService.isRunning)
+                    }, RECORD_START_MS)
+                }
+            }
+        )
+        floatingBubble = bubble
+        bubble.show()
+    }
+
+    fun setFloatingBubble(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FLOATING_BUBBLE, enabled).apply()
+        applyBubbleSetting()
     }
 
     private fun registerScreenshotObserver() {
@@ -670,6 +745,8 @@ class ScreenshotService : AccessibilityService() {
         accessibilityButtonCallback = null
         unregisterScreenshotObserver()
         quickSharePopup?.dismiss()
+        floatingBubble?.hide()
+        floatingBubble = null
         try {
             unregisterReceiver(screenshotReceiver)
         } catch (_: Exception) {}
