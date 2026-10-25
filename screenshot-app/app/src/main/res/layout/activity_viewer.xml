@@ -38,6 +38,15 @@
             android:textColor="@color/white"
             android:textSize="14sp" />
 
+        <TextView
+            android:id="@+id/viewerCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:singleLine="true"
+            android:textColor="#B0BCC6"
+            android:textSize="13sp" />
+
     </LinearLayout>
 
     <com.doubletap.screenshot.ZoomableImageView
@@ -83,46 +92,59 @@
             android:text="@string/viewer_copy_text"
             android:textAllCaps="false"
             android:textColor="@color/white"
-            android:textSize="12sp"
+            android:textSize="11sp"
             app:cornerRadius="8dp" />
 
         <Button
             android:id="@+id/btnViewerEdit"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="4dp"
             android:layout_weight="1"
             android:backgroundTint="@color/viewer_button"
             android:text="@string/viewer_edit"
             android:textAllCaps="false"
             android:textColor="@color/white"
-            android:textSize="12sp"
+            android:textSize="11sp"
             app:cornerRadius="8dp" />
 
         <Button
             android:id="@+id/btnViewerShare"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="4dp"
             android:layout_weight="1"
             android:backgroundTint="@color/viewer_button"
             android:text="@string/viewer_share"
             android:textAllCaps="false"
             android:textColor="@color/white"
-            android:textSize="12sp"
+            android:textSize="11sp"
             app:cornerRadius="8dp" />
 
         <Button
             android:id="@+id/btnViewerDelete"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="4dp"
             android:layout_weight="1"
             android:backgroundTint="@color/danger"
             android:text="@string/viewer_delete"
             android:textAllCaps="false"
             android:textColor="@color/white"
-            android:textSize="12sp"
+            android:textSize="11sp"
+            app:cornerRadius="8dp" />
+
+        <Button
+            android:id="@+id/btnViewerMore"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/viewer_button"
+            android:text="@string/viewer_more"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="11sp"
             app:cornerRadius="8dp" />
 
     </LinearLayout>

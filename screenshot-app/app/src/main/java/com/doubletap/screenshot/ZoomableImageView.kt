@@ -19,6 +19,8 @@ import androidx.appcompat.widget.AppCompatImageView
  * viewer means opening a screenshot always works, and a long screenshot can be
  * zoomed into rather than squeezed onto one screen.
  */
+private const val SWIPE_VELOCITY = 800f
+
 class ZoomableImageView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -33,6 +35,14 @@ class ZoomableImageView @JvmOverloads constructor(
     // The superclass constructor can call setImageDrawable() from android:src
     // before this class's fields exist, so nothing below runs until init does.
     private var ready = false
+
+    /**
+     * Called with -1 for the previous image and +1 for the next, on a
+     * horizontal fling. Only fires while the image is zoomed out: once it is
+     * zoomed in, a sideways drag means panning, and stealing that for paging
+     * would make the zoom useless.
+     */
+    var onSwipe: ((Int) -> Unit)? = null
 
     private val scaleDetector = ScaleGestureDetector(
         context,
@@ -64,6 +74,18 @@ class ZoomableImageView @JvmOverloads constructor(
             ): Boolean {
                 m.postTranslate(-dx, -dy)
                 applyBounds()
+                return true
+            }
+
+            override fun onFling(
+                e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float
+            ): Boolean {
+                val handler = onSwipe ?: return false
+                if (!atRestingZoom()) return false
+                // Mostly sideways, and fast enough to be deliberate.
+                if (kotlin.math.abs(vx) < kotlin.math.abs(vy)) return false
+                if (kotlin.math.abs(vx) < SWIPE_VELOCITY) return false
+                handler(if (vx > 0) -1 else 1)
                 return true
             }
         }
@@ -111,6 +133,9 @@ class ZoomableImageView @JvmOverloads constructor(
         m.postTranslate((viewW - drawW * baseScale) / 2f, (viewH - drawH * baseScale) / 2f)
         imageMatrix = m
     }
+
+    /** True while the image is at its zoomed-out size, within rounding. */
+    fun atRestingZoom(): Boolean = currentScale() <= baseScale * 1.01f
 
     private fun currentScale(): Float {
         m.getValues(values)

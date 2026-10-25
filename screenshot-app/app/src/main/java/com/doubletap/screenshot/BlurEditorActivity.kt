@@ -7,6 +7,9 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
 import android.os.Bundle
@@ -33,6 +36,12 @@ class BlurEditorActivity : AppCompatActivity() {
     private var originalBitmap: Bitmap? = null
     private var sourceUri: Uri? = null
 
+    private lateinit var filterButton: ImageButton
+    private var modeButtons: List<Pair<ImageButton, BlurOverlayView.Mode>> = emptyList()
+
+    private var filter = ImageFilter.NONE
+    private var rotated = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_blur_editor)
@@ -52,6 +61,17 @@ class BlurEditorActivity : AppCompatActivity() {
         val btnWatermark = findViewById<ImageButton>(R.id.btnToolWatermark)
         val btnUndo = findViewById<ImageButton>(R.id.btnToolUndo)
         val btnOcr = findViewById<ImageButton>(R.id.btnToolOcr)
+        val btnRotate = findViewById<ImageButton>(R.id.btnToolRotate)
+        filterButton = findViewById(R.id.btnToolFilter)
+
+        // Only the four drawing modes are stateful; the rest act once and are
+        // never "the current tool".
+        modeButtons = listOf(
+            btnBlur to BlurOverlayView.Mode.BLUR,
+            btnDraw to BlurOverlayView.Mode.DRAW,
+            btnArrow to BlurOverlayView.Mode.ARROW,
+            btnCrop to BlurOverlayView.Mode.CROP
+        )
 
         // intent.data when the gallery opens the editor, EXTRA_STREAM when
         // another app shares a photo into it.
@@ -78,10 +98,19 @@ class BlurEditorActivity : AppCompatActivity() {
         btnWatermark.setOnClickListener { promptWatermark() }
         btnUndo.setOnClickListener { drawingOverlay.undo() }
         btnOcr.setOnClickListener { sourceUri?.let { uri -> OcrActivity.start(this, uri) } }
+        filterButton.setOnClickListener { chooseFilter() }
+        btnRotate.setOnClickListener { rotate() }
+
+        // Blur is the overlay's starting mode; say so on screen, because until
+        // now nothing marked any tool as the active one.
+        setTool(BlurOverlayView.Mode.BLUR)
     }
 
     private fun setTool(mode: BlurOverlayView.Mode) {
         drawingOverlay.currentMode = mode
+        for ((button, buttonMode) in modeButtons) {
+            button.isSelected = buttonMode == mode
+        }
         toolIndicator.text = when (mode) {
             BlurOverlayView.Mode.BLUR -> getString(R.string.tool_blur)
             BlurOverlayView.Mode.DRAW -> getString(R.string.tool_draw)
@@ -89,6 +118,67 @@ class BlurEditorActivity : AppCompatActivity() {
             BlurOverlayView.Mode.TEXT -> getString(R.string.tool_text)
             BlurOverlayView.Mode.CROP -> getString(R.string.tool_crop)
         }
+    }
+
+    private fun chooseFilter() {
+        val choices = ImageFilter.values()
+        val labels = choices.map { it.label }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.editor_filter_title)
+            .setSingleChoiceItems(labels, choices.indexOf(filter)) { dialog, which ->
+                applyFilter(choices[which])
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /**
+     * The preview is filtered by the view, which costs nothing; the pixels are
+     * only recoloured once, when the result is written in saveImage().
+     */
+    private fun applyFilter(choice: ImageFilter) {
+        filter = choice
+        val matrix = choice.matrix()
+        if (matrix == null) {
+            imageView.clearColorFilter()
+        } else {
+            imageView.colorFilter = ColorMatrixColorFilter(ColorMatrix(matrix))
+        }
+        filterButton.isSelected = choice != ImageFilter.NONE
+        toolIndicator.text = choice.label
+    }
+
+    /**
+     * Rotation changes the canvas the marks were placed on, so anything already
+     * drawn would land in the wrong place. Clearing is the honest option.
+     */
+    private fun rotate() {
+        val current = originalBitmap ?: return
+
+        val rotatedBitmap = try {
+            Bitmap.createBitmap(
+                current, 0, 0, current.width, current.height,
+                Matrix().apply { postRotate(90f) }, true
+            )
+        } catch (e: OutOfMemoryError) {
+            ScreenshotService.instance?.recordError("rotate", e)
+            Toast.makeText(this, R.string.editor_rotate_failed, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        drawingOverlay.clearRegions()
+        originalBitmap = rotatedBitmap
+        rotated = true
+        imageView.setImageBitmap(rotatedBitmap)
+        drawingOverlay.post {
+            drawingOverlay.setImageDimensions(
+                imageView.width, imageView.height, rotatedBitmap.width, rotatedBitmap.height
+            )
+        }
+        if (current != rotatedBitmap) current.recycle()
+        toolIndicator.setText(R.string.tool_rotate)
     }
 
     private fun promptText() {
@@ -155,14 +245,21 @@ class BlurEditorActivity : AppCompatActivity() {
 
     private fun saveImage(share: Boolean) {
         val bitmap = originalBitmap ?: return
-        val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        val canvas = Canvas(result)
 
         val drawings = drawingOverlay.getDrawingOperations()
-        if (drawings.isEmpty()) {
+        if (drawings.isEmpty() && filter == ImageFilter.NONE && !rotated) {
             Toast.makeText(this, R.string.editor_no_changes, Toast.LENGTH_SHORT).show()
             return
         }
+
+        // Drawn through a filtered paint rather than copied, so the chosen
+        // filter is baked into the pixels exactly as the preview showed it.
+        val result = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
+        val paint = Paint().apply {
+            filter.matrix()?.let { colorFilter = ColorMatrixColorFilter(ColorMatrix(it)) }
+        }
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
 
         val scaleX = result.width.toFloat() / drawingOverlay.width
         val scaleY = result.height.toFloat() / drawingOverlay.height

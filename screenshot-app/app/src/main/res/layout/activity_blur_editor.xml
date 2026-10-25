@@ -76,7 +76,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="6dp"
-                android:background="@drawable/popup_button_bg"
+                android:background="@drawable/tool_button_bg"
                 android:contentDescription="@string/tool_blur"
                 android:padding="10dp"
                 android:src="@drawable/ic_blur" />
@@ -86,7 +86,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="6dp"
-                android:background="@drawable/popup_button_bg"
+                android:background="@drawable/tool_button_bg"
                 android:contentDescription="@string/tool_draw"
                 android:padding="10dp"
                 android:src="@drawable/ic_draw" />
@@ -96,7 +96,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="6dp"
-                android:background="@drawable/popup_button_bg"
+                android:background="@drawable/tool_button_bg"
                 android:contentDescription="@string/tool_arrow"
                 android:padding="10dp"
                 android:src="@drawable/ic_arrow" />
@@ -106,7 +106,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="6dp"
-                android:background="@drawable/popup_button_bg"
+                android:background="@drawable/tool_button_bg"
                 android:contentDescription="@string/tool_text"
                 android:padding="10dp"
                 android:src="@drawable/ic_text" />
@@ -116,7 +116,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="6dp"
-                android:background="@drawable/popup_button_bg"
+                android:background="@drawable/tool_button_bg"
                 android:contentDescription="@string/tool_crop"
                 android:padding="10dp"
                 android:src="@drawable/ic_crop" />
@@ -126,7 +126,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="6dp"
-                android:background="@drawable/popup_button_bg"
+                android:background="@drawable/tool_button_bg"
                 android:contentDescription="@string/tool_watermark"
                 android:padding="10dp"
                 android:src="@drawable/ic_watermark" />
@@ -136,16 +136,36 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="6dp"
-                android:background="@drawable/popup_button_bg"
+                android:background="@drawable/tool_button_bg"
                 android:contentDescription="@string/tool_ocr"
                 android:padding="10dp"
                 android:src="@drawable/ic_ocr" />
 
             <ImageButton
+                android:id="@+id/btnToolFilter"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/tool_button_bg"
+                android:contentDescription="@string/tool_filter"
+                android:padding="10dp"
+                android:src="@drawable/ic_filter" />
+
+            <ImageButton
+                android:id="@+id/btnToolRotate"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/tool_button_bg"
+                android:contentDescription="@string/tool_rotate"
+                android:padding="10dp"
+                android:src="@drawable/ic_rotate" />
+
+            <ImageButton
                 android:id="@+id/btnToolUndo"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="@drawable/popup_button_bg"
+                android:background="@drawable/tool_button_bg"
                 android:contentDescription="@string/tool_undo"
                 android:padding="10dp"
                 android:src="@drawable/ic_undo" />

@@ -139,6 +139,20 @@
     <string name="viewer_edit">Edit</string>
     <string name="viewer_share">Share</string>
     <string name="viewer_delete">Delete</string>
+    <string name="viewer_more">More</string>
+    <string name="viewer_position">%1$d / %2$d</string>
+
+    <string name="more_open_with">Open with another app</string>
+    <string name="more_copy_image">Copy image</string>
+    <string name="more_details">Details</string>
+    <string name="more_copied">Image copied</string>
+    <string name="more_copy_failed">Could not copy the image</string>
+    <string name="more_no_app">No app on this phone opens images</string>
+
+    <string name="tool_filter">Filter</string>
+    <string name="tool_rotate">Rotated 90\u00B0</string>
+    <string name="editor_filter_title">Filter</string>
+    <string name="editor_rotate_failed">Not enough memory to rotate this image</string>
     <string name="viewer_image_description">Screenshot</string>
     <string name="viewer_load_failed">Could not open this image</string>
 
