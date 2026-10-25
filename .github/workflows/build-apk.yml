@@ -30,21 +30,25 @@ jobs:
         working-directory: screenshot-app
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Rename APK
-        run: cp screenshot-app/app/build/outputs/apk/debug/app-debug.apk DoubleTapScreenshot.apk
-
-      - name: Report APK size
+      - name: Name the APK after its version
         id: apk
         run: |
-          echo "size=$(du -h DoubleTapScreenshot.apk | cut -f1)" >> "$GITHUB_OUTPUT"
-          echo "version=$(grep -oP 'versionName = "\K[^"]+' screenshot-app/app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
-          du -h DoubleTapScreenshot.apk
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' screenshot-app/app/build.gradle.kts)
+          # Every release used to be called DoubleTapScreenshot.apk, so copies
+          # piled up as "(1)", "(2)" in Downloads and browsers served the
+          # cached one. The version in the name makes each build distinct.
+          NAME="DoubleTapScreenshot-v${VERSION}.apk"
+          cp screenshot-app/app/build/outputs/apk/debug/app-debug.apk "$NAME"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "size=$(du -h "$NAME" | cut -f1)" >> "$GITHUB_OUTPUT"
+          du -h "$NAME"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DoubleTapScreenshot
-          path: DoubleTapScreenshot.apk
+          path: ${{ steps.apk.outputs.name }}
 
       - name: Create Release
         if: github.ref == 'refs/heads/main'
@@ -58,7 +62,7 @@ jobs:
             Download the APK file below (${{ steps.apk.outputs.size }}) and install it on your Android phone.
 
             ### How to install:
-            1. Download `DoubleTapScreenshot.apk` below
+            1. Download `${{ steps.apk.outputs.name }}` below
             2. Open it on your phone
             3. Tap "Install" (allow "Install from unknown sources" if asked)
             4. Open the app and follow the setup
@@ -67,7 +71,7 @@ jobs:
             afterwards so Android reloads the service configuration.
 
             Requires Android 9 or newer.
-          files: DoubleTapScreenshot.apk
+          files: ${{ steps.apk.outputs.name }}
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
