@@ -3,7 +3,9 @@ package com.doubletap.screenshot
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 
 /**
@@ -34,8 +36,18 @@ class ScreenRecordActivity : Activity() {
         }
 
         val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+
+        // Asking plainly makes Android 14+ offer "entire screen or one app",
+        // which is a choice nobody wants to make before every recording. Naming
+        // the display up front reduces the prompt to a single confirmation.
+        val capture = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            mgr.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
+        } else {
+            mgr.createScreenCaptureIntent()
+        }
+
         @Suppress("DEPRECATION")
-        startActivityForResult(mgr.createScreenCaptureIntent(), REQUEST_CODE)
+        startActivityForResult(capture, REQUEST_CODE)
     }
 
     @Suppress("DEPRECATION")

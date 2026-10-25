@@ -124,6 +124,10 @@
     </plurals>
 
     <!-- History -->
+    <string name="bubble_title">Floating Button</string>
+    <string name="bubble_desc">A button you can drag anywhere. Tap for a screenshot, hold to record. It hides itself from your screenshots, which Android\u2019s own button cannot do.</string>
+    <string name="bubble_description">Screenshot and recording button</string>
+
     <string name="select_hint">Tap the screenshots you want, then Export PDF</string>
 
     <string name="scope_screenshots">Screenshots \u25BE</string>
