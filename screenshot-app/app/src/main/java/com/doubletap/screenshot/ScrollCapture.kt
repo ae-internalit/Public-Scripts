@@ -171,7 +171,7 @@ class ScrollCapture(private val service: AccessibilityService) {
         val saved = save(stitched)
         val count = shots.size
         recycleAll()
-        if (stitched != null && !stitched.isRecycled) stitched.recycle()
+        if (!stitched.isRecycled) stitched.recycle()
 
         onFinished(
             if (saved) service.getString(R.string.scroll_saved, count)

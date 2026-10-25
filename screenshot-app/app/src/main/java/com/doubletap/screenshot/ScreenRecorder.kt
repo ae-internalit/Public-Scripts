@@ -264,7 +264,7 @@ class ScreenRecorder(
 
         try {
             while (running) {
-                var read = 0
+                val read: Int
 
                 if (wantsDevice) {
                     read = deviceRecord?.read(deviceBuf, 0, deviceBuf.size) ?: 0

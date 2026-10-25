@@ -47,13 +47,21 @@ class PdfLayoutTest {
     fun `the image is centred inside the margins`() {
         val fit = PdfLayout.fit(imageWidth = 100, imageHeight = 100)
 
+        // The leftover space is often odd, and page coordinates are integers,
+        // so the two gaps can differ by one. Anything larger is off-centre.
         val leftGap = fit.left - margin
         val rightGap = (pageW - margin) - fit.right
-        assertEquals("centred horizontally", leftGap, rightGap)
+        assertTrue(
+            "off-centre horizontally: $leftGap vs $rightGap",
+            kotlin.math.abs(leftGap - rightGap) <= 1
+        )
 
         val topGap = fit.top - margin
         val bottomGap = (pageH - margin) - fit.bottom
-        assertEquals("centred vertically", topGap, bottomGap)
+        assertTrue(
+            "off-centre vertically: $topGap vs $bottomGap",
+            kotlin.math.abs(topGap - bottomGap) <= 1
+        )
     }
 
     @Test
