@@ -1,10 +1,8 @@
 package com.doubletap.screenshot
 
-import android.content.ContentUris
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -47,7 +45,7 @@ class HistoryActivity : AppCompatActivity() {
         // way to simply look at a screenshot.
         adapter = HistoryAdapter(screenshots, object : HistoryAdapter.OnItemClickListener {
             override fun onClick(item: ScreenshotItem) {
-                ViewerActivity.start(this@HistoryActivity, item.uri, item.name)
+                ViewerActivity.start(this@HistoryActivity, item.id, showAllPhotos)
             }
 
             // Long-press is how the PDF export gets found: it turns on
@@ -103,38 +101,8 @@ class HistoryActivity : AppCompatActivity() {
 
     private fun loadScreenshots() {
         screenshots.clear()
-
-        val projection = arrayOf(
-            MediaStore.Images.Media._ID,
-            MediaStore.Images.Media.DISPLAY_NAME,
-            MediaStore.Images.Media.DATE_ADDED,
-            MediaStore.Images.Media.WIDTH,
-            MediaStore.Images.Media.HEIGHT
-        )
-
-        val selection = if (showAllPhotos) null else
-            "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? OR ${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?"
-        val selectionArgs = if (showAllPhotos) null else arrayOf("%Screenshots%", "%creenshot%")
-        val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
-
-        contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection, selection, selectionArgs, sortOrder
-        )?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-            val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-
-            while (cursor.moveToNext()) {
-                val id = cursor.getLong(idCol)
-                val name = cursor.getString(nameCol)
-                val date = cursor.getLong(dateCol)
-                val uri = ContentUris.withAppendedId(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
-                )
-                screenshots.add(ScreenshotItem(id, name, date, uri))
-            }
-        }
+        // Shared with the viewer, which walks the same list when you swipe.
+        screenshots.addAll(MediaQuery.load(this, showAllPhotos))
 
         adapter.notifyDataSetChanged()
         emptyText.setText(if (showAllPhotos) R.string.history_empty_photos else R.string.history_empty)
