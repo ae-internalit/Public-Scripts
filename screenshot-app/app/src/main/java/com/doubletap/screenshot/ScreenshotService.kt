@@ -63,11 +63,13 @@ class ScreenshotService : AccessibilityService() {
     private var screenshotObserver: ContentObserver? = null
     private var accessibilityButtonCallback:
             AccessibilityButtonController.AccessibilityButtonCallback? = null
+    private var scrollCapture: ScrollCapture? = null
 
     private val screenshotReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_TAKE_SCREENSHOT) {
-                takeScreenshot()
+            when (intent?.action) {
+                ACTION_TAKE_SCREENSHOT -> takeScreenshot()
+                ACTION_SCROLL_CAPTURE -> startScrollCapture()
             }
         }
     }
@@ -110,6 +112,10 @@ class ScreenshotService : AccessibilityService() {
         const val KEY_LAST_CRASH = "last_crash"
         const val KEY_AUDIO_MODE = "record_audio_mode"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
+        const val ACTION_SCROLL_CAPTURE = "com.doubletap.screenshot.SCROLL_CAPTURE"
+
+        /** Long enough for the notification shade to close and the app to redraw. */
+        private const val SHADE_CLOSE_MS = 600L
         private const val MIN_TAP_GAP = 40L
         private const val SWIPE_VELOCITY_THRESHOLD = 0.8f
         private const val COOLDOWN_MS = 2000L
@@ -198,6 +204,12 @@ class ScreenshotService : AccessibilityService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val scrollIntent = PendingIntent.getBroadcast(
+            this, 3,
+            Intent(ACTION_SCROLL_CAPTURE).apply { setPackage(packageName) },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         val recordIntent = PendingIntent.getActivity(
             this, 2,
             Intent(this, ScreenRecordActivity::class.java),
@@ -217,14 +229,42 @@ class ScreenshotService : AccessibilityService() {
             )
             .addAction(
                 Notification.Action.Builder(
+                    null, "Scroll Capture", scrollIntent
+                ).build()
+            )
+            .addAction(
+                Notification.Action.Builder(
                     null, "Record", recordIntent
                 ).build()
             )
             .build()
     }
 
+    private fun startScrollCapture() {
+        if (scrollCapture != null) return
+
+        val capture = ScrollCapture(this)
+        if (!capture.isSupported()) {
+            Toast.makeText(this, R.string.scroll_unsupported, Toast.LENGTH_LONG).show()
+            return
+        }
+        scrollCapture = capture
+        vibrate()
+
+        // Started from the notification shade, so the target app is not yet
+        // back in front and there is nothing to scroll until it is.
+        handler.postDelayed({
+            capture.start { message ->
+                scrollCapture = null
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+        }, SHADE_CLOSE_MS)
+    }
+
     private fun registerScreenshotReceiver() {
-        val filter = IntentFilter(ACTION_TAKE_SCREENSHOT)
+        val filter = IntentFilter(ACTION_TAKE_SCREENSHOT).apply {
+            addAction(ACTION_SCROLL_CAPTURE)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(screenshotReceiver, filter, RECEIVER_NOT_EXPORTED)
         } else {

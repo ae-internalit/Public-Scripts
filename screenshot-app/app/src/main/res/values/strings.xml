@@ -105,6 +105,24 @@
     <string name="ocr_no_text">No text found in image</string>
     <string name="ocr_failed">Text extraction unavailable — the text model may still be downloading. Try again in a moment.</string>
 
+    <!-- Scrolling capture -->
+    <string name="scroll_unsupported">Scrolling capture needs Android 11 or newer</string>
+    <string name="scroll_nothing_to_join">Nothing to scroll here — open a page that scrolls, then try again</string>
+    <string name="scroll_failed">Scrolling capture failed</string>
+    <string name="scroll_saved">Saved a scrolling screenshot from %1$d captures</string>
+
+    <!-- PDF export -->
+    <string name="select_button">Select</string>
+    <string name="select_done">Done</string>
+    <string name="export_pdf">Export PDF</string>
+    <string name="export_pdf_working">Building PDF…</string>
+    <string name="export_pdf_saved">PDF saved to Downloads</string>
+    <string name="export_pdf_failed">Could not create the PDF</string>
+    <plurals name="export_pdf_count">
+        <item quantity="one">Export %d page as PDF</item>
+        <item quantity="other">Export %d pages as PDF</item>
+    </plurals>
+
     <!-- History -->
     <string name="history_title">Screenshot Gallery</string>
     <string name="history_empty">No screenshots found</string>

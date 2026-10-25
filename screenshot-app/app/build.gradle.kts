@@ -11,8 +11,8 @@ android {
         applicationId = "com.doubletap.screenshot"
         minSdk = 28
         targetSdk = 34
-        versionCode = 21
-        versionName = "8.0"
+        versionCode = 22
+        versionName = "8.1"
     }
 
     buildTypes {
@@ -45,4 +45,6 @@ dependencies {
     // Unbundled: the OCR model ships via Play Services instead of being baked
     // into the APK, which keeps the download roughly 30MB smaller. Same API.
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
+
+    testImplementation("junit:junit:4.13.2")
 }

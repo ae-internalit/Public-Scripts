@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
@@ -18,6 +19,8 @@ class HistoryActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyText: TextView
     private lateinit var adapter: HistoryAdapter
+    private lateinit var selectBtn: Button
+    private lateinit var exportBtn: Button
     private val screenshots = mutableListOf<ScreenshotItem>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,7 +30,12 @@ class HistoryActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.historyRecycler)
         emptyText = findViewById(R.id.emptyText)
         val backBtn = findViewById<Button>(R.id.btnBack)
+        selectBtn = findViewById(R.id.btnSelect)
+        exportBtn = findViewById(R.id.btnExportPdf)
+
         backBtn.setOnClickListener { finish() }
+        selectBtn.setOnClickListener { toggleSelectionMode() }
+        exportBtn.setOnClickListener { exportSelectedAsPdf() }
 
         // A tap shows what this app can do with the screenshot. Handing it
         // straight to an external viewer hid every feature behind a long-press.
@@ -38,6 +46,15 @@ class HistoryActivity : AppCompatActivity() {
 
             override fun onLongClick(item: ScreenshotItem) {
                 showOptions(item)
+            }
+
+            override fun onSelectionChanged(count: Int) {
+                exportBtn.isEnabled = count > 0
+                exportBtn.text = if (count == 0) {
+                    getString(R.string.export_pdf)
+                } else {
+                    resources.getQuantityString(R.plurals.export_pdf_count, count, count)
+                }
             }
         })
 
@@ -149,6 +166,52 @@ class HistoryActivity : AppCompatActivity() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startActivity(Intent.createChooser(intent, "Share"))
+    }
+
+    private fun toggleSelectionMode() {
+        adapter.selectionMode = !adapter.selectionMode
+        adapter.clearSelection()
+
+        val on = adapter.selectionMode
+        selectBtn.setText(if (on) R.string.select_done else R.string.select_button)
+        exportBtn.visibility = if (on) View.VISIBLE else View.GONE
+        exportBtn.isEnabled = false
+        exportBtn.setText(R.string.export_pdf)
+    }
+
+    private fun exportSelectedAsPdf() {
+        val uris = adapter.selectedUris()
+        if (uris.isEmpty()) return
+
+        exportBtn.isEnabled = false
+        exportBtn.setText(R.string.export_pdf_working)
+
+        // A dozen full-size screenshots is far too slow for the main thread.
+        Thread {
+            val result = PdfExporter.export(this, uris)
+            runOnUiThread {
+                if (result == null) {
+                    exportBtn.isEnabled = true
+                    exportBtn.setText(R.string.export_pdf)
+                    Toast.makeText(this, R.string.export_pdf_failed, Toast.LENGTH_LONG).show()
+                } else {
+                    toggleSelectionMode()
+                    Toast.makeText(this, R.string.export_pdf_saved, Toast.LENGTH_LONG).show()
+                    openPdf(result)
+                }
+            }
+        }.start()
+    }
+
+    private fun openPdf(uri: Uri) {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/pdf")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+        }
     }
 
     private fun extractText(uri: Uri) {
