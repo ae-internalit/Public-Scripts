@@ -10,4 +10,11 @@
     <color name="orange">#FF9800</color>
     <color name="white">#FFFFFF</color>
     <color name="trigger_bg">#2196F3</color>
+    <color name="danger">#E53935</color>
+
+    <!-- The photo viewer stays dark whatever the app theme: a light frame
+         around a screenshot makes its own edges impossible to see. -->
+    <color name="viewer_background">#101214</color>
+    <color name="viewer_chrome">#1C1F24</color>
+    <color name="viewer_button">#3A4049</color>
 </resources>

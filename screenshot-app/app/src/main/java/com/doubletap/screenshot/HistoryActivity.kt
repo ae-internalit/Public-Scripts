@@ -9,7 +9,6 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -37,15 +36,23 @@ class HistoryActivity : AppCompatActivity() {
         selectBtn.setOnClickListener { toggleSelectionMode() }
         exportBtn.setOnClickListener { exportSelectedAsPdf() }
 
-        // A tap shows what this app can do with the screenshot. Handing it
-        // straight to an external viewer hid every feature behind a long-press.
+        // A tap opens the screenshot; every action lives on the viewer's own
+        // bottom bar. The menu that used to replace the tap meant there was no
+        // way to simply look at a screenshot.
         adapter = HistoryAdapter(screenshots, object : HistoryAdapter.OnItemClickListener {
             override fun onClick(item: ScreenshotItem) {
-                showOptions(item)
+                ViewerActivity.start(this@HistoryActivity, item.uri, item.name)
             }
 
+            // Long-press is how the PDF export gets found: it turns on
+            // selection and ticks the screenshot that was pressed.
             override fun onLongClick(item: ScreenshotItem) {
-                showOptions(item)
+                if (!adapter.selectionMode) toggleSelectionMode()
+                adapter.select(item.id)
+                exportBtn.isEnabled = true
+                exportBtn.text = resources.getQuantityString(
+                    R.plurals.export_pdf_count, adapter.selected.size, adapter.selected.size
+                )
             }
 
             override fun onSelectionChanged(count: Int) {
@@ -127,47 +134,6 @@ class HistoryActivity : AppCompatActivity() {
         recyclerView.visibility = if (screenshots.isEmpty()) View.GONE else View.VISIBLE
     }
 
-    private fun viewScreenshot(uri: Uri) {
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "image/*")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        try {
-            startActivity(intent)
-        } catch (_: Exception) {}
-    }
-
-    private fun showOptions(item: ScreenshotItem) {
-        val options = arrayOf(
-            "Copy Text (OCR)",
-            "Edit — blur, draw, crop",
-            "Share",
-            "Open in photo viewer",
-            "Delete"
-        )
-        AlertDialog.Builder(this)
-            .setTitle(item.name)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> extractText(item.uri)
-                    1 -> editScreenshot(item.uri)
-                    2 -> shareScreenshot(item.uri)
-                    3 -> viewScreenshot(item.uri)
-                    4 -> deleteScreenshot(item)
-                }
-            }
-            .show()
-    }
-
-    private fun shareScreenshot(uri: Uri) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/*"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(intent, "Share"))
-    }
-
     private fun toggleSelectionMode() {
         adapter.selectionMode = !adapter.selectionMode
         adapter.clearSelection()
@@ -177,6 +143,7 @@ class HistoryActivity : AppCompatActivity() {
         exportBtn.visibility = if (on) View.VISIBLE else View.GONE
         exportBtn.isEnabled = false
         exportBtn.setText(R.string.export_pdf)
+        if (on) Toast.makeText(this, R.string.select_hint, Toast.LENGTH_SHORT).show()
     }
 
     private fun exportSelectedAsPdf() {
@@ -214,31 +181,16 @@ class HistoryActivity : AppCompatActivity() {
         }
     }
 
-    private fun extractText(uri: Uri) {
-        OcrActivity.start(this, uri)
-    }
-
-    private fun editScreenshot(uri: Uri) {
-        val intent = Intent(this, BlurEditorActivity::class.java).apply {
-            data = uri
+    // The system delete confirmation reports back here.
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != MediaDelete.REQUEST_DELETE) return
+        if (resultCode == RESULT_OK) {
+            Toast.makeText(this, R.string.delete_done, Toast.LENGTH_SHORT).show()
         }
-        startActivity(intent)
+        loadScreenshots()
     }
-
-    private fun deleteScreenshot(item: ScreenshotItem) {
-        AlertDialog.Builder(this)
-            .setTitle("Delete Screenshot")
-            .setMessage("Delete ${item.name}?")
-            .setPositiveButton("Delete") { _, _ ->
-                try {
-                    contentResolver.delete(item.uri, null, null)
-                    loadScreenshots()
-                } catch (_: Exception) {}
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
 }
 
 data class ScreenshotItem(
