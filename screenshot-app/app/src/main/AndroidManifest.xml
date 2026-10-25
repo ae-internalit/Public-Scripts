@@ -24,6 +24,11 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <!-- Only API 28 needs this: there, read and write share one permission
+         group, so the granted read also lets the gallery delete a file. From
+         API 29 on, deletion goes through MediaStore's own confirmation. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:name=".ScreenshotApp"
@@ -60,7 +65,18 @@
             android:theme="@style/Theme.DoubleTapScreenshot" />
 
         <activity
+            android:name=".ViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DoubleTapScreenshot" />
+
+        <activity
             android:name=".ScreenRecordActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
+            android:name=".DeleteActivity"
+            android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 

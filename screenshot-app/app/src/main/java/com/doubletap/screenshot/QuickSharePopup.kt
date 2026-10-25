@@ -171,9 +171,11 @@ class QuickSharePopup(private val context: Context) {
     }
 
     private fun deleteScreenshot(uri: Uri) {
-        try {
-            context.contentResolver.delete(uri, null, null)
-        } catch (_: Exception) {}
+        // Same trap as the gallery had: the screenshot was written by SystemUI,
+        // not by this app, so a direct ContentResolver.delete() throws on
+        // Android 10 and later. The delete has to go through the platform's own
+        // confirmation, which needs an Activity to receive the result.
+        DeleteActivity.start(context, uri)
     }
 
     fun dismiss() {

@@ -124,6 +124,21 @@
     </plurals>
 
     <!-- History -->
+    <string name="select_hint">Tap the screenshots you want, then Export PDF</string>
+
+    <string name="viewer_back">Back</string>
+    <string name="viewer_copy_text">Copy Text</string>
+    <string name="viewer_edit">Edit</string>
+    <string name="viewer_share">Share</string>
+    <string name="viewer_delete">Delete</string>
+    <string name="viewer_image_description">Screenshot</string>
+    <string name="viewer_load_failed">Could not open this image</string>
+
+    <string name="delete_title">Delete screenshot</string>
+    <string name="delete_message">This removes the file from your phone.</string>
+    <string name="delete_done">Screenshot deleted</string>
+    <string name="delete_failed">Android would not delete this file</string>
+
     <string name="history_title">Screenshot Gallery</string>
     <string name="history_empty">No screenshots found</string>
     <string name="history_button">Screenshot Gallery</string>

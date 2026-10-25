@@ -35,6 +35,12 @@ class HistoryAdapter(
         notifyDataSetChanged()
     }
 
+    /** Ticks one item, for the long-press that turns selection on. */
+    fun select(id: Long) {
+        selected.add(id)
+        notifyDataSetChanged()
+    }
+
     fun selectedUris(): List<android.net.Uri> =
         items.filter { it.id in selected }.map { it.uri }
 
