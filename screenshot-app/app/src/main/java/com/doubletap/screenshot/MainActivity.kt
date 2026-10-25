@@ -187,6 +187,19 @@ class MainActivity : AppCompatActivity() {
             ScreenshotService.instance?.setQuickShare(isChecked)
         }
 
+        findViewById<RadioGroup>(R.id.shortcutGroup).setOnCheckedChangeListener { _, checkedId ->
+            val action = if (checkedId == R.id.shortcutRecord) {
+                ScreenshotService.SHORTCUT_RECORD
+            } else {
+                ScreenshotService.SHORTCUT_SCREENSHOT
+            }
+            getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putString(ScreenshotService.KEY_SHORTCUT_ACTION, action)
+                .apply()
+            ScreenshotService.instance?.setShortcutAction(action)
+        }
+
         bubbleSwitch.setOnCheckedChangeListener { _, isChecked ->
             getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
                 .edit()
@@ -380,6 +393,17 @@ class MainActivity : AppCompatActivity() {
 
         bubbleSwitch.isChecked =
             prefs.getBoolean(ScreenshotService.KEY_FLOATING_BUBBLE, false)
+
+        val shortcutAction = prefs.getString(
+            ScreenshotService.KEY_SHORTCUT_ACTION, ScreenshotService.SHORTCUT_SCREENSHOT
+        )
+        findViewById<RadioButton>(
+            if (shortcutAction == ScreenshotService.SHORTCUT_RECORD) {
+                R.id.shortcutRecord
+            } else {
+                R.id.shortcutScreenshot
+            }
+        ).isChecked = true
 
         val audioMode = prefs.getString(
             ScreenshotService.KEY_AUDIO_MODE, ScreenRecorder.AUDIO_DEVICE

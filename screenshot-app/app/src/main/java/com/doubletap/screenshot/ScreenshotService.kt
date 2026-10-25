@@ -110,6 +110,9 @@ class ScreenshotService : AccessibilityService() {
         const val KEY_AUTO_RENAME = "auto_rename"
         const val KEY_QUICK_SHARE = "quick_share"
         const val KEY_FLOATING_BUBBLE = "floating_bubble"
+        const val KEY_SHORTCUT_ACTION = "shortcut_action"
+        const val SHORTCUT_SCREENSHOT = "screenshot"
+        const val SHORTCUT_RECORD = "record"
         const val KEY_THEME = "theme_mode"
         const val KEY_LAST_CRASH = "last_crash"
         const val KEY_LAST_CRASH_VERSION = "last_crash_version"
@@ -172,7 +175,7 @@ class ScreenshotService : AccessibilityService() {
                             val now = System.currentTimeMillis()
                             if (now - lastScreenshotTime < COOLDOWN_MS) return
                             lastScreenshotTime = now
-                            takeScreenshot()
+                            onShortcut()
                         } catch (e: Exception) {
                             recordError("accessibility button", e)
                             Toast.makeText(
@@ -187,6 +190,47 @@ class ScreenshotService : AccessibilityService() {
                 accessibilityButtonController.registerAccessibilityButtonCallback(it)
             }
         } catch (_: Exception) {}
+    }
+
+    /**
+     * The accessibility shortcut — Android's floating button or the two-finger
+     * swipe up, whichever the user picked — reports one thing and one thing
+     * only: that it fired. Which of the two it is, we never learn, so this is a
+     * setting rather than two separate gestures.
+     *
+     * With the app's own bubble taking screenshots, the shortcut is free to do
+     * the other job.
+     */
+    private fun onShortcut() {
+        val action = prefs.getString(KEY_SHORTCUT_ACTION, SHORTCUT_SCREENSHOT)
+        if (action == SHORTCUT_RECORD) {
+            toggleRecording()
+        } else {
+            takeScreenshot()
+        }
+    }
+
+    /**
+     * ScreenRecordActivity already stops a running recording rather than
+     * starting a second, so one gesture both starts and ends.
+     */
+    fun toggleRecording() {
+        val wasRunning = ScreenRecordService.isRunning
+        vibrate()
+        ScreenRecordActivity.start(this)
+
+        if (wasRunning) {
+            floatingBubble?.setRecording(false)
+        } else {
+            // The consent prompt decides whether this actually starts.
+            handler.postDelayed({
+                floatingBubble?.setRecording(ScreenRecordService.isRunning)
+            }, RECORD_START_MS)
+        }
+    }
+
+    fun setShortcutAction(action: String) {
+        prefs.edit().putString(KEY_SHORTCUT_ACTION, action).apply()
     }
 
     private fun createNotificationChannel() {
@@ -575,15 +619,7 @@ class ScreenshotService : AccessibilityService() {
                 }
             },
             onHold = {
-                if (!ScreenRecordService.isRunning) {
-                    vibrate()
-                    ScreenRecordActivity.start(this)
-                    // The prompt decides whether this actually starts, so the
-                    // red state waits until the service says it is running.
-                    handler.postDelayed({
-                        floatingBubble?.setRecording(ScreenRecordService.isRunning)
-                    }, RECORD_START_MS)
-                }
+                if (!ScreenRecordService.isRunning) toggleRecording()
             }
         )
         floatingBubble = bubble

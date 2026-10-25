@@ -124,6 +124,11 @@
     </plurals>
 
     <!-- History -->
+    <string name="shortcut_title">Two-Finger Swipe / Android Button</string>
+    <string name="shortcut_desc">Android gives this app one shortcut \u2014 either the two-finger swipe up or its own floating button, whichever you picked in Accessibility settings. Choose what it does. With the Floating Button below taking screenshots, set this to Record.</string>
+    <string name="shortcut_screenshot">Take a screenshot</string>
+    <string name="shortcut_record">Start / stop recording</string>
+
     <string name="bubble_title">Floating Button</string>
     <string name="bubble_desc">A button you can drag anywhere. Tap for a screenshot, hold to record. It hides itself from your screenshots, which Android\u2019s own button cannot do.</string>
     <string name="bubble_description">Screenshot and recording button</string>

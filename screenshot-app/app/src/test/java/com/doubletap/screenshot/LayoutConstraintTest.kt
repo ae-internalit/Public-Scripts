@@ -74,6 +74,46 @@ class LayoutConstraintTest {
         )
     }
 
+    /**
+     * The settings screen is one long vertical chain: each card sits below the
+     * one before it. Inserting a card means re-pointing whatever followed it,
+     * and forgetting leaves two views anchored to the same neighbour — which
+     * ConstraintLayout renders by drawing them on top of each other, with no
+     * error anywhere.
+     */
+    @Test
+    fun `no two settings cards sit on the same neighbour`() {
+        val root = parse(File(layoutDir(), "activity_main.xml"))
+        val column = if (root.tagName.endsWith("ConstraintLayout")) {
+            root
+        } else {
+            var found: Element? = null
+            val children = root.childNodes
+            for (i in 0 until children.length) {
+                val child = children.item(i) as? Element ?: continue
+                if (child.tagName.endsWith("ConstraintLayout")) found = child
+            }
+            found ?: error("activity_main has no ConstraintLayout column")
+        }
+
+        val anchors = mutableMapOf<String, MutableList<String>>()
+        val children = column.childNodes
+        for (i in 0 until children.length) {
+            val child = children.item(i) as? Element ?: continue
+            val anchor = child.getAttributeNS(resAuto, "layout_constraintTop_toBottomOf")
+            if (anchor.isEmpty()) continue
+            val id = child.getAttributeNS(androidNs, "id").ifEmpty { "(no id)" }
+            anchors.getOrPut(anchor) { mutableListOf() } += id
+        }
+
+        val collisions = anchors.filterValues { it.size > 1 }
+        assertTrue(
+            "these share a neighbour and will be drawn on top of each other:\n" +
+                collisions.entries.joinToString("\n") { "  below ${it.key}: ${it.value}" },
+            collisions.isEmpty()
+        )
+    }
+
     @Test
     fun `the gallery grid stops above the export button`() {
         val root = parse(File(layoutDir(), "activity_history.xml"))
