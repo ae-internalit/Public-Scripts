@@ -2,7 +2,6 @@ package com.doubletap.screenshot
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -25,10 +24,6 @@ class ViewerActivity : AppCompatActivity() {
     companion object {
         private const val EXTRA_URI = "viewer_uri"
         private const val EXTRA_NAME = "viewer_name"
-
-        // A stitched long screenshot can run to tens of millions of pixels,
-        // which decodes straight into an OutOfMemoryError at full size.
-        private const val MAX_PIXELS = 16_000_000L
 
         fun start(context: Context, uri: Uri, name: String) {
             context.startActivity(
@@ -74,7 +69,7 @@ class ViewerActivity : AppCompatActivity() {
         progress.visibility = View.VISIBLE
         Thread {
             val bitmap = try {
-                decodeScaled()
+                BitmapLoader.decode(this, uri, BitmapLoader.VIEW_PIXELS)
             } catch (e: Exception) {
                 ScreenshotService.instance?.recordError("viewer decode", e)
                 null
@@ -94,24 +89,6 @@ class ViewerActivity : AppCompatActivity() {
                 }
             }
         }.start()
-    }
-
-    private fun decodeScaled(): android.graphics.Bitmap? {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, bounds)
-        }
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-
-        var sample = 1
-        while ((bounds.outWidth / sample).toLong() * (bounds.outHeight / sample) > MAX_PIXELS) {
-            sample *= 2
-        }
-
-        val options = BitmapFactory.Options().apply { inSampleSize = sample }
-        return contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, options)
-        }
     }
 
     private fun share() {

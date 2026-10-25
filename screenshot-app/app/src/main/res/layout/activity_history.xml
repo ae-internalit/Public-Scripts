@@ -25,15 +25,21 @@
             android:textSize="14sp"
             app:cornerRadius="8dp" />
 
-        <TextView
+        <!-- Doubles as the screen title and the Screenshots/All photos switch,
+             so the toggle costs no extra room in a bar that has none. -->
+        <Button
+            android:id="@+id/btnScope"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
             android:layout_weight="1"
-            android:gravity="center"
-            android:text="@string/history_title"
+            android:text="@string/scope_screenshots"
+            android:textAllCaps="false"
             android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textSize="14sp"
+            app:cornerRadius="8dp" />
 
         <Button
             android:id="@+id/btnSelect"

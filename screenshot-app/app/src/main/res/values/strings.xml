@@ -126,6 +126,14 @@
     <!-- History -->
     <string name="select_hint">Tap the screenshots you want, then Export PDF</string>
 
+    <string name="scope_screenshots">Screenshots \u25BE</string>
+    <string name="scope_all_photos">All photos \u25BE</string>
+    <string name="history_empty_photos">No photos found</string>
+
+    <string name="editor_chooser_label">Blur &amp; Edit</string>
+    <string name="editor_no_image">No image was passed to the editor</string>
+    <string name="editor_load_failed">Could not open this image</string>
+
     <string name="viewer_back">Back</string>
     <string name="viewer_copy_text">Copy Text</string>
     <string name="viewer_edit">Edit</string>

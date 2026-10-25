@@ -20,6 +20,10 @@ class HistoryActivity : AppCompatActivity() {
     private lateinit var adapter: HistoryAdapter
     private lateinit var selectBtn: Button
     private lateinit var exportBtn: Button
+    private lateinit var scopeBtn: Button
+
+    /** The gallery lists screenshots by default; the editor works on any image. */
+    private var showAllPhotos = false
     private val screenshots = mutableListOf<ScreenshotItem>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,10 +35,12 @@ class HistoryActivity : AppCompatActivity() {
         val backBtn = findViewById<Button>(R.id.btnBack)
         selectBtn = findViewById(R.id.btnSelect)
         exportBtn = findViewById(R.id.btnExportPdf)
+        scopeBtn = findViewById(R.id.btnScope)
 
         backBtn.setOnClickListener { finish() }
         selectBtn.setOnClickListener { toggleSelectionMode() }
         exportBtn.setOnClickListener { exportSelectedAsPdf() }
+        scopeBtn.setOnClickListener { toggleScope() }
 
         // A tap opens the screenshot; every action lives on the viewer's own
         // bottom bar. The menu that used to replace the tap meant there was no
@@ -106,8 +112,9 @@ class HistoryActivity : AppCompatActivity() {
             MediaStore.Images.Media.HEIGHT
         )
 
-        val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? OR ${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?"
-        val selectionArgs = arrayOf("%Screenshots%", "%creenshot%")
+        val selection = if (showAllPhotos) null else
+            "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? OR ${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?"
+        val selectionArgs = if (showAllPhotos) null else arrayOf("%Screenshots%", "%creenshot%")
         val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
 
         contentResolver.query(
@@ -130,8 +137,21 @@ class HistoryActivity : AppCompatActivity() {
         }
 
         adapter.notifyDataSetChanged()
+        emptyText.setText(if (showAllPhotos) R.string.history_empty_photos else R.string.history_empty)
         emptyText.visibility = if (screenshots.isEmpty()) View.VISIBLE else View.GONE
         recyclerView.visibility = if (screenshots.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    /** Switches the grid between screenshots only and every photo on the phone. */
+    private fun toggleScope() {
+        showAllPhotos = !showAllPhotos
+        scopeBtn.setText(
+            if (showAllPhotos) R.string.scope_all_photos else R.string.scope_screenshots
+        )
+        // A selection made in one list means nothing in the other.
+        if (adapter.selectionMode) toggleSelectionMode()
+        recyclerView.scrollToPosition(0)
+        loadScreenshots()
     }
 
     private fun toggleSelectionMode() {
