@@ -18,12 +18,25 @@ class HistoryAdapter(
     interface OnItemClickListener {
         fun onClick(item: ScreenshotItem)
         fun onLongClick(item: ScreenshotItem)
+        fun onSelectionChanged(count: Int)
     }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val thumbnail: ImageView = view.findViewById(R.id.screenshotThumbnail)
         val dateText: TextView = view.findViewById(R.id.screenshotDate)
+        val checkMark: View = view.findViewById(R.id.checkMark)
     }
+
+    var selectionMode = false
+    val selected = linkedSetOf<Long>()
+
+    fun clearSelection() {
+        selected.clear()
+        notifyDataSetChanged()
+    }
+
+    fun selectedUris(): List<android.net.Uri> =
+        items.filter { it.id in selected }.map { it.uri }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -40,9 +53,22 @@ class HistoryAdapter(
         val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
         holder.dateText.text = dateFormat.format(Date(item.date * 1000))
 
-        holder.itemView.setOnClickListener { listener.onClick(item) }
+        holder.checkMark.visibility =
+            if (selectionMode && item.id in selected) View.VISIBLE else View.GONE
+        holder.itemView.alpha =
+            if (selectionMode && item.id !in selected) 0.45f else 1f
+
+        holder.itemView.setOnClickListener {
+            if (selectionMode) {
+                if (!selected.remove(item.id)) selected.add(item.id)
+                notifyItemChanged(holder.bindingAdapterPosition)
+                listener.onSelectionChanged(selected.size)
+            } else {
+                listener.onClick(item)
+            }
+        }
         holder.itemView.setOnLongClickListener {
-            listener.onLongClick(item)
+            if (!selectionMode) listener.onLongClick(item)
             true
         }
     }
