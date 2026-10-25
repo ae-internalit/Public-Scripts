@@ -294,6 +294,18 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences(ScreenshotService.PREFS_NAME, MODE_PRIVATE)
         val crash = prefs.getString(ScreenshotService.KEY_LAST_CRASH, null)
 
+        // An error recorded by a version that is no longer installed cannot be
+        // reproduced and only invites reporting a fault that is already fixed.
+        val recordedBy = prefs.getString(ScreenshotService.KEY_LAST_CRASH_VERSION, null)
+        if (!crash.isNullOrEmpty() && recordedBy != null && recordedBy != appVersion(this)) {
+            prefs.edit()
+                .remove(ScreenshotService.KEY_LAST_CRASH)
+                .remove(ScreenshotService.KEY_LAST_CRASH_VERSION)
+                .apply()
+            crashCard.visibility = View.GONE
+            return
+        }
+
         if (crash.isNullOrEmpty()) {
             crashCard.visibility = View.GONE
             return
@@ -309,7 +321,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         crashClearButton.setOnClickListener {
-            prefs.edit().remove(ScreenshotService.KEY_LAST_CRASH).apply()
+            prefs.edit()
+                .remove(ScreenshotService.KEY_LAST_CRASH)
+                .remove(ScreenshotService.KEY_LAST_CRASH_VERSION)
+                .apply()
             crashCard.visibility = View.GONE
         }
     }

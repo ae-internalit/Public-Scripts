@@ -110,6 +110,7 @@ class ScreenshotService : AccessibilityService() {
         const val KEY_QUICK_SHARE = "quick_share"
         const val KEY_THEME = "theme_mode"
         const val KEY_LAST_CRASH = "last_crash"
+        const val KEY_LAST_CRASH_VERSION = "last_crash_version"
         const val KEY_AUDIO_MODE = "record_audio_mode"
         const val ACTION_TAKE_SCREENSHOT = "com.doubletap.screenshot.TAKE_SCREENSHOT"
         const val ACTION_SCROLL_CAPTURE = "com.doubletap.screenshot.SCROLL_CAPTURE"
@@ -393,7 +394,10 @@ class ScreenshotService : AccessibilityService() {
                 append(error.toString()).append('\n')
                 error.stackTrace.take(10).forEach { append("  at ").append(it).append('\n') }
             }
-            prefs.edit().putString(KEY_LAST_CRASH, text).apply()
+            prefs.edit()
+                .putString(KEY_LAST_CRASH, text)
+                .putString(KEY_LAST_CRASH_VERSION, appVersion(this))
+                .apply()
         } catch (_: Exception) {
         }
     }

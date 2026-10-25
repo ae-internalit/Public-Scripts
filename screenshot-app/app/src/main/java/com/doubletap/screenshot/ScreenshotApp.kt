@@ -32,6 +32,7 @@ class ScreenshotApp : Application() {
                 getSharedPreferences(ScreenshotService.PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .putString(ScreenshotService.KEY_LAST_CRASH, describe(error))
+                    .putString(ScreenshotService.KEY_LAST_CRASH_VERSION, appVersion(this))
                     .commit()
             } catch (_: Throwable) {
             }
