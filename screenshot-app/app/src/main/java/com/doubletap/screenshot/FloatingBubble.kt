@@ -34,6 +34,13 @@ class FloatingBubble(
         private const val SIZE_DP = 52
         private const val LONG_PRESS_MS = 400L
         private const val TOUCH_SLOP_DP = 12f
+
+        /** How long after the last touch the bubble dims itself. */
+        private const val IDLE_FADE_MS = 3000L
+
+        /** Faint enough to stop being furniture, solid enough to still find. */
+        private const val IDLE_ALPHA = 0.25f
+        private const val FADE_DURATION_MS = 450L
         const val KEY_X = "bubble_x"
         const val KEY_Y = "bubble_y"
     }
@@ -53,10 +60,20 @@ class FloatingBubble(
     private var params: WindowManager.LayoutParams? = null
     private var hidden = false
 
+    private var recording = false
+
     private var startX = 0
     private var startY = 0
     private var rawDownX = 0f
     private var rawDownY = 0f
+
+    /**
+     * A button that sits on top of everything you read all day has no business
+     * being at full strength while nothing is happening to it.
+     */
+    private val fadeToIdle = Runnable {
+        view?.animate()?.alpha(IDLE_ALPHA)?.setDuration(FADE_DURATION_MS)?.start()
+    }
 
     /** Fires the hold while the finger is still down, not when it is lifted. */
     private val holdCheck = Runnable {
@@ -96,6 +113,7 @@ class FloatingBubble(
             view = bubble
             params = layout
             hidden = false
+            wake()
         } catch (e: Exception) {
             ScreenshotService.instance?.recordError("bubble add", e)
         }
@@ -104,6 +122,7 @@ class FloatingBubble(
     fun hide() {
         val bubble = view ?: return
         handler.removeCallbacks(holdCheck)
+        handler.removeCallbacks(fadeToIdle)
         gesture.cancel()
         try {
             windowManager.removeView(bubble)
@@ -125,16 +144,31 @@ class FloatingBubble(
         view?.let {
             hidden = false
             it.visibility = View.VISIBLE
+            wake()
         }
     }
 
-    /** Red with a stop square while recording, so the same button ends it. */
-    fun setRecording(recording: Boolean) {
+    /**
+     * Full strength, then dim again once left alone. While recording it stays
+     * up: a stop button you have to hunt for is worse than a visible one.
+     */
+    private fun wake() {
         val bubble = view ?: return
-        bubble.setImageResource(if (recording) R.drawable.ic_stop else R.drawable.ic_camera)
+        handler.removeCallbacks(fadeToIdle)
+        bubble.animate().cancel()
+        bubble.alpha = 1f
+        if (!recording) handler.postDelayed(fadeToIdle, IDLE_FADE_MS)
+    }
+
+    /** Red with a stop square while recording, so the same button ends it. */
+    fun setRecording(active: Boolean) {
+        recording = active
+        val bubble = view ?: return
+        bubble.setImageResource(if (active) R.drawable.ic_stop else R.drawable.ic_camera)
         bubble.setBackgroundResource(
-            if (recording) R.drawable.bubble_bg_recording else R.drawable.bubble_bg
+            if (active) R.drawable.bubble_bg_recording else R.drawable.bubble_bg
         )
+        wake()
     }
 
     private fun onTouch(event: MotionEvent): Boolean {
@@ -148,7 +182,7 @@ class FloatingBubble(
                 startY = layout.y
                 rawDownX = event.rawX
                 rawDownY = event.rawY
-                bubble.alpha = 0.75f
+                wake()
                 handler.postDelayed(holdCheck, LONG_PRESS_MS)
                 return true
             }
@@ -171,7 +205,7 @@ class FloatingBubble(
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 handler.removeCallbacks(holdCheck)
-                bubble.alpha = 1f
+                wake()
                 when (gesture.up()) {
                     BubbleGesture.Release.TAP -> onTap()
                     BubbleGesture.Release.DRAG_END -> snapToEdge(bubble, layout)
